@@ -18,11 +18,11 @@ The simulation code consists of five subroutines and the main program.
 
 To run a simulation:
 
-- Compile each of the modules with the command:
+1. Compile each of the modules with the command:
 	`gfortran -c m0.f90 m1.f90 m2.f90 m3.f90 m4.f90`
-- Compile the main program with the command:
+2. Compile the main program with the command:
 	`gfortran m0.o m1.o m2.o m3.o m4.o main.f90 -o main.o`
-- Run the main program executable generated 'main.o' with the command:
+3. Run the main program executable generated 'main.o' with the command:
 	`./main.o`
 
 At the moment, the simulation parameters are set within the 'main.f90' program. This file needs to be modified in order to change them if necessary.
