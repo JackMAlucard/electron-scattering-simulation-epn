@@ -1,10 +1,11 @@
 program main
 
-use kind_parameters, only: sp, dp, i8
-use units, only: EinAU, dinAUfromSI
-use MS1, only: electron_beam, trnsf_to_surf_ref_sys
-use MS2! only???
-use MS3
+use m0!kind_parameters, only: sp, dp, i8
+!use units, only: EinAU, dinAUfromSI
+use m1!MS1, only: electron_beam, trnsf_to_surf_ref_sys
+use m2!MS2! only???
+use m3!MS3
+use m4
 
 implicit none
 !*******************************************************************************
@@ -36,7 +37,7 @@ integer(i8), allocatable :: b_neq(:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb)
 integer(i8), allocatable :: b_ec(:,:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,max_neq)
 !Equivalent (mean) position of each equivalent electron of each bin
 real(dp), allocatable :: b_er(:,:,:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,max_neq)
-real(dp) :: FFed	!Far Field effective distance
+real(dp) :: FFd	!Far Field (effective) distance
 integer :: bin_size
 !trajectory subroutine variables
 integer(i8) :: P, T
@@ -49,7 +50,6 @@ real(dp) :: xs, ys, zs
 real(dp) :: s, alfa, beta
 !*******************************************************************************
 !General variables
-real(dp), parameter :: PI = dacos(-1.d0)
 integer(i8) :: i, j, k
 integer(i8), parameter :: ou = 13, oiu = 24	!Output file for data and info
 real(sp) :: startT, endT, execTime			!Program timer variables
@@ -74,8 +74,8 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!MS1 TEST: ELECTRON BEAM GENERATION*******************************************	
 	!Input parameters
-	N_eb = 5000
-	E = 8	!keV
+	N_eb = 150
+	E = 10	!keV
 	R_eb = 3*1.77 !Å, considering the width of the standard cuboid in scc is Nx*1.77
 	pd = 1 !Gaussian !4 Uniform distribution
 	call electron_beam(r, v, a, N_eb, E, R_eb, pd)
@@ -89,7 +89,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 		write(11,*)
 		
 		!Input parameters
-		theta = 80!º
+		theta = 84!º
 		d0 = 80!Å
 		call trnsf_to_surf_ref_sys(r, v, a, theta_in=theta, d_in=d0)
 		!e_pos, e_vel, e_acc, theta_in, d_in
@@ -156,7 +156,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!MS3 TEST: TRAJECTORIES*******************************************************
 	!EMBEDDED EQUIVALENT ELECTRONS BINS*******************************************
-	FFed = 30!a0
+	FFd = 30!a0
 	!Setting bin size (distance) and computing its inverse for sort_electron
 	!subroutine (THIS IS ON MS3 trajectory_MM subroutine)
 	bin_size = 3	!MUST CHECK IF IT IS THE SAME VALUE IN MS3
@@ -251,9 +251,9 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 			!ONLY NEAR FIELD
 			!call trajectory_NF(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
 			!THE FAR FIELD EFFECTIVE DISTANCE MUST ALWAYS BE GREATER THAN THE INTERATOMIC DISTANCE
-			if (FFed .lt. d) FFed = d
+			if (FFd .lt. d) FFd = d
 			!USING MIX METHOD
-			call trajectory_MM(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,d0,FFed,T,d,dt,l,r,v,a)
+			call trajectory_opt(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,d0,FFd,T,d,dt,l,r,v,a)
 			write(ou,*)
 			write(ou,*)
 			!Write final electron positions to file 
