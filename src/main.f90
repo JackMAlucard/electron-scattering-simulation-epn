@@ -101,8 +101,8 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!FOR SIMPLE SILICA MODEL
 	!Input parameters
-	Nx = 4
-	Ny = 10
+	Nx = 30
+	Ny = 30
 	Nz = 75
 	d = 1.77!Å, sum of Silicon and Oxygen covalent radii
 	call simple_silica_model(ssm, Z, Nx, Ny, Nz, d)
@@ -133,7 +133,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	!read*
 
 	!PLOT THAT ONLY SHOWS SSM STRUCTURE 
-	!call system('gnuplot "ssm.gp"')
+!	call system('gnuplot "ssm.gp"')
 !	print*, "Stopping point, Ctrl+C to end program"
 !	read*
 	
@@ -197,7 +197,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 			print*, "Simulating", i, "out of", N_eb, "electron trajectories"
 
 			!Computing i-th trajectory
-			call trajectory_NF(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
+			call trajectory(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
 			write(ou,*)
 			write(ou,*)
 			!Write final electron positions to file 
