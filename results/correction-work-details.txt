@@ -1,0 +1,59 @@
+Hay 36 procesadores
+Son 9 simulaciones de ley
+10 keV, 6°
+10 keV, 8°
+10 keV, 10°
+9 keV, 6°
+9 keV, 8°
+9 keV, 10°
+8 keV, 6°
+8 keV, 8°
+8 keV, 10°
+Uso estas para comparar el código no optimizado y sí
+Puedo luego enviar solo del optimizado más
+con mayor variedad de energías.
+	Esto puede quedar pendiente
+	
+	
+1380274520
+psjxcy
+
+349165478
+
+Time step size (aut) vs initial kinetic energy (keV)
+y = -1.e-5*x + 1.1e-4
+
+
+
+LINKS
+
+GNUPLOT COLOR AND PALETTES
+http://gnuplot.info/demo_5.2/pm3dcolors.html
+https://github.com/Gnuplotting/gnuplot-palettes
+https://stackoverflow.com/questions/48688659/where-should-i-get-a-full-list-of-colors-linetypes-etc-supported-in-gnuplot
+
+GNUPLOT FILL AND TRANSPARENT
+http://www.gnuplotting.org/tag/fill/
+https://gnuplot.sourceforge.net/demo/transparent.html
+https://stackoverflow.com/questions/14270563/restricting-the-domain-of-a-function-plotted-on-gnuplot
+https://gnuplot.sourceforge.net/docs_4.2/node245.html
+http://www.gnuplot.info/demo/fillbetween.html
+https://stackoverflow.com/questions/13394080/gnuplot-fill-the-space-between-two-functions
+
+GNUPLOT SCALES
+https://stackoverflow.com/questions/5239294/how-to-set-equal-scales-length-in-gnuplot
+
+GNUPLOTS FONTS
+http://www.bersch.net/gnuplot-doc/fonts.html
+
+GNUPLOT RGBFORMULAE
+https://stackoverflow.com/questions/25966773/gnuplot-palette-default-and-defined
+https://gnuplot.sourceforge.net/docs_4.2/node216.html
+https://en.wikibooks.org/wiki/Gnuplot/palette#rgbformulae
+
+GNUPLOT RANDOM EXTRAS
+https://gnuplot.sourceforge.net/docs_4.2/node167.html
+http://www.gnuplot.info/docs_4.2/node62.html
+http://www.gnuplot.info/docs_4.2/node234.html
+https://gnuplot.sourceforge.net/docs_4.2/node188.html
+
