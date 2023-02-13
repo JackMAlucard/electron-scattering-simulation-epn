@@ -5,6 +5,7 @@ use m0!kind_parameters, only: sp, dp, i8
 use m1!MS1, only: electron_beam, trnsf_to_surf_ref_sys
 use m2!MS2! only???
 use m3!MS3
+use m4
 
 implicit none
 !*******************************************************************************
@@ -57,12 +58,19 @@ integer, allocatable :: seed(:)
 real(dp) :: u
 integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	
-	!FIX RANDOM NUMBERS FOR REPRODUCIBILITY***************************************
+	!SET RANDOM NUMBERS REPRODUCIBILITY*******************************************
 	call random_seed(size=seed_size)
 	allocate(seed(seed_size))
 	seed = 23466992! putting arbitrary seed to all elements
 	call random_seed(put=seed)
 	deallocate(seed)
+!	!Test
+!	do i=1, 10
+!		call random_stduniform(u)
+!		print*, u
+!	end do
+!	print*, "Press Crtl+C"
+!	read*
 
 	!MS1 TEST: ELECTRON BEAM GENERATION*******************************************	
 	!Input parameters
@@ -101,8 +109,8 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!FOR SIMPLE SILICA MODEL
 	!Input parameters
-	Nx = 30
-	Ny = 30
+	Nx = 4
+	Ny = 10
 	Nz = 75
 	d = 1.77!Å, sum of Silicon and Oxygen covalent radii
 	call simple_silica_model(ssm, Z, Nx, Ny, Nz, d)
@@ -133,7 +141,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	!read*
 
 	!PLOT THAT ONLY SHOWS SSM STRUCTURE 
-!	call system('gnuplot "ssm.gp"')
+	!call system('gnuplot "ssm.gp"')
 !	print*, "Stopping point, Ctrl+C to end program"
 !	read*
 	
@@ -147,6 +155,50 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 
 	!MS3 TEST: TRAJECTORIES*******************************************************
+	!EMBEDDED EQUIVALENT ELECTRONS BINS*******************************************
+	FFd = 30!a0
+	!Setting bin size (distance) and computing its inverse for sort_electron
+	!subroutine (THIS IS ON MS3 trajectory_MM subroutine)
+	bin_size = 3	!MUST CHECK IF IT IS THE SAME VALUE IN MS3
+!	d_bin = bin_size*d
+!	d_bin_inv = 1/d_bin
+	!Computing bin boundary indices
+	!Since electrons can be embedded after crossing the material boundaries,
+	!I must consider an extra cubic bin into each direction into the material
+	Nxb = Nx/bin_size + 1
+	Nyb = Ny/bin_size + 1
+	Nzb = Nz/bin_size + 1
+	N_bins = (2*Nxb)*(Nyb)*(2*Nzb)
+	!Setting parameters that characterize each bin 
+	max_eq = 180 !Maximum possible equivalent charge, from tests the max is 182
+	max_neq = N_eb/max_eq + 1	!At most N_beam/max_eq + 1 equivalent electrons
+	!Allocating and initializing cubic bins arrays 
+	!Number of equivalent electrons present in each bin, between 0 and max_neq
+	!I must initialize bin_neq as zero, since there are no equivalent electrons yet
+	allocate(b_neq(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb))
+	b_neq = 0
+	!Equivalent charge of each equivalent electron of each bin, between 0 and max_eq
+	!I must initialize bin_ec as max_eq so that a new electron makes bin_neq equal to 1
+	allocate(b_ec(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq))
+	b_ec = 0
+	b_ec(:,:,:,0) = max_eq
+	!Equivalent (mean) position of each equivalent electron of each bin
+	!I initialize bin_er as zero so that the first equiv_pos is the position of that electron
+	allocate(b_er(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq,3))
+	b_er = 0
+!	do i=-Nxb,Nxb
+!		do j=-1,-Nyb, -1
+!			do k=-Nzb,Nzb
+!				b_er(i,j,k,:,:) = 0! ¿No me da igual inicializar todo en 0? Why ",1)" before?
+!			end do
+!		end do
+!	end do
+	!Printing bins test information
+	print*, "Bin boundary indices"
+	print*, "Nxb:", Nxb
+	print*, "Nyb:", Nyb
+	print*, "Nzb:", Nzb
+	print*, "Number of bins:", N_bins
 	print*, "Interatomic distance (a0):", d
 !	print*, "Bin distance (a0)", d_bin, d_bin_inv
 	print*, "Boundaries"
@@ -156,6 +208,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	
 	!Trajectory subroutine input parameters
 	P = 5000	!Number of points to be plotted
+!	Z = 14	!Atomic number of neutral atoms
 	dt = 1.d-5	!Time step size
 	l = 1/33.7465!SiO2 mean free using weighted scattering cross sections
 	print*, "l", l
@@ -197,7 +250,12 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 			print*, "Simulating", i, "out of", N_eb, "electron trajectories"
 
 			!Computing i-th trajectory
-			call trajectory(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
+			!ONLY NEAR FIELD
+			!call trajectory_NF(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
+			!THE FAR FIELD EFFECTIVE DISTANCE MUST ALWAYS BE GREATER THAN THE INTERATOMIC DISTANCE
+			if (FFd .lt. d) FFd = d
+			!USING MIX METHOD
+			call trajectory_opt(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,d0,FFd,T,d,dt,l,r,v,a)
 			write(ou,*)
 			write(ou,*)
 			!Write final electron positions to file 
@@ -239,7 +297,6 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	close(ou+2)
 	close(ou+3)
 	close(ou+4)
-	close(ou+5)
 	
 	call cpu_time(endT)
 	execTime = endT - startT
@@ -252,7 +309,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 		write(oiu,*) "  Number of electrons embedded:", Ne
 		write(oiu,*) "  Number of electrons scattered:", Ns
 		write(oiu,*) "Total simulation time:", execTime
-	close(oiu)
+	close(oiu)	
 	
 	!WRITE POSITION OF SIMULATED EMBEDDED ELECTRONS TO FILE
 !	open(unit=11,file='emb.dat',status='unknown')
