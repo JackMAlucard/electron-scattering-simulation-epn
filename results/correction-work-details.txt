@@ -23,6 +23,40 @@ psjxcy
 Time step size (aut) vs initial kinetic energy (keV)
 y = -1.e-5*x + 1.1e-4
 
+ANÁLISIS DE ERRORES
+
+Preliminar
+	Obtener número de electrones incrustados y dispersados
+
+Time distribution
+	Calcular el número de electrón en el que son iguales incrustados y dispersados
+
+Charge patch
+Ap 1
+	Gráfico 2D
+	error en x y en y en los ejes correspondientes
+	ignorar error en z
+	mostrar número de electrón con color
+
+Ap 2
+	error en r (eje vertical)
+	número de electrón (eje horizontal) 
+
+Scattered angles
+Ap 1
+Ap 1
+	Gráfico 2D
+	error en x y en y en los ejes correspondientes
+	ignorar error en z
+	mostrar número de electrón con color
+
+Ap 2
+	error en r (eje vertical)
+	número de electrón (eje horizontal)
+
+
+
+
 
 
 LINKS
