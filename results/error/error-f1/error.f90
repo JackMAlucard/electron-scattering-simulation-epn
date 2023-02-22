@@ -14,6 +14,7 @@ integer :: i, aux_int!, k, iostatus
 real(dp), dimension(2) :: aux_dp
 real(dp), dimension(3) :: r_fep, r_emb, r_sct
 
+!TIME DISTRIBUTION**************************************************************
 open(unit=11,file=dir_m//'td.dat',status='unknown')
 open(unit=12,file=dir_mo//'td.dat',status='unknown')
 open(unit=13,file='td-info.dat',status='unknown')
@@ -35,27 +36,44 @@ open(unit=13,file='td-info.dat',status='unknown')
 	print*, 'Ns', Ns_mo
 	print*, 'Neq', Neq_mo
 	print*
-!	print*, 'Error'
-!	print*, 'Ne', dabs(Ne_mo-Ne_m)/dfloat()
-!	print*, 'Ns', Ns_mo
-!	print*, 'Neq', Neq_mo
-!	print*
+	print*, 'Error'
+	print*, 'Ne', (abs(Ne_mo-Ne_m)/dfloat(Ne_m))*100._dp, '%'
+	print*, 'Ns', (abs(Ns_mo-Ns_m)/dfloat(Ns_m))*100._dp, '%'
+	print*, 'Neq', (abs(Neq_mo-Neq_m)/dfloat(Neq_m))*100._dp, '%'
+	print*
 	!TO FILE
-	write(13,*) '!Number of embedded, scattered electrons and when both are equal'
+	write(13,*) '!Number of electrons: embedded, scattered and when both are equal'
 	write(13,*) '!Regular Simulation'
 	write(13,*) Ne_m
 	write(13,*) Ns_m
 	write(13,*) Neq_m
-	write(13,*)
-	write(13,*) 'Optimized Simulation'
+	write(13,*) '!Optimized Simulation'
 	write(13,*) Ne_mo
 	write(13,*) Ns_mo
 	write(13,*) Neq_mo
-	print*
+	write(13,*) '!Percent error of each number [%]'
+	write(13,*) (abs(Ne_mo-Ne_m)/dfloat(Ne_m))*100._dp
+	write(13,*) (abs(Ns_mo-Ns_m)/dfloat(Ns_m))*100._dp
+	write(13,*) (abs(Neq_mo-Neq_m)/dfloat(Neq_m))*100._dp
 
 close(11)
 close(12)
 close(13)
+
+!CHARGE PATCH*******************************************************************
+open(unit=11,file=dir_m//'cp.dat',status='unknown')
+open(unit=12,file=dir_mo//'cp.dat',status='unknown')
+open(unit=13,file='cp-error.dat',status='unknown')
+
+	do i=1, Ne
+	
+	end do
+
+close(11)
+close(12)
+close(13)
+
+!SCATTERED ANGLES***************************************************************
 
 !open(unit=13,file='sea.dat',status='unknown')
 
