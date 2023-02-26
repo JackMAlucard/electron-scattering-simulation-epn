@@ -7,10 +7,33 @@ DONE	Generar plots de dispersión de ángulos
 DONE	Reenviar simulaciones optimizadas utilizando el mismo número de átomos del material
 DONE	Generar plots de parches de carga
 DONE	Generar plots de número de electrones dispersos e incrustados en tiempo.
-Subir scripts y programas para análisis al repositorio
+DONE	Subir scripts y programas para análisis al repositorio
 Escribir programa que calcula errores de dispersión
 Escribir programa que calcula errores de parche
 Escribir programa que calcula errores de evolución
+
+
+Miércoles 22/02
+Terminar programa de comparación de errores
+Generar gráficos de errores a partir de los resultados
+
+
+Jueves 23/02
+
+
+Viernes 24/02
+
+
+Sábado 25/02
+
+
+Domingo 26/02
+
+
+Lunes 27/02
+
+
+Martes 28/02
 
 
 
@@ -26,3 +49,4 @@ Correcciones capítulo 4
 	Revisar cada sección
 	Gráficos
 Correcciones capítulo 2
+
