@@ -43,7 +43,16 @@ Entonces tengo dos opciones
 Aumentar el rango efectivo y repetir las simulaciones
 Comparar de otra manera los resultados
 
-Otras al
+Otras alternativas:
+Sacar el punto medio de cada simulación
+Calcular el error porcentual en x, y, r entre estos centros
+Hallar la desviación estándar a modo de medida de dispersión
+Calcular el error porcentual entre la dispersión
+
+Graficar:
+x: Ángulo
+y: Desviación estándar
+z (color): energía
 
 
 Reunión con Ramon

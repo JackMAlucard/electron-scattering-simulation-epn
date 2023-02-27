@@ -10,9 +10,12 @@ integer, parameter :: N = 5000
 !Neq is for when embedded and scattered electrons are equal
 integer :: Ne_m, Ns_m, Neq_m
 integer :: Ne_mo, Ns_mo, Neq_mo
-integer :: i, aux_int, N_comp! N_comp number up until which comparison is valid
+integer :: i, aux_int!, N_comp! N_comp number up until which comparison is valid
 real(dp), dimension(2) :: aux_dp
 real(dp), dimension(3) :: r_fep, r_emb, r_sct
+real(dp), dimension(2) :: r_sea, r_sea_mean_m, r_sea_mean_mo
+real(dp) :: r_sea_sd_m, r_sea_sd_mo
+real(dp), dimension(3) :: r_emb_mean_m, r_emb_mean_mo
 
 !TIME DISTRIBUTION**************************************************************
 open(unit=11,file=dir_m//'td.dat',status='unknown')
@@ -24,7 +27,7 @@ open(unit=13,file='td-info.dat',status='unknown')
 		if (Ne_m .eq. Ns_m) Neq_m = aux_int
 		read(12,*) Ne_mo, Ns_mo, aux_int, aux_dp
 		if (Ne_mo .eq. Ns_mo) Neq_mo = aux_int
-		if ((Ne_m .eq. Ne_mo) .and. (Ns_m .eq. Ns_mo)) N_comp = aux_int
+!		if ((Ne_m .eq. Ne_mo) .and. (Ns_m .eq. Ns_mo)) N_comp = aux_int
 	end do
 	!TO CONSOLE
 	print*, 'Regular'
@@ -42,7 +45,7 @@ open(unit=13,file='td-info.dat',status='unknown')
 	print*, 'Ns', (abs(Ns_mo-Ns_m)/dfloat(Ns_m))*100._dp, '%'
 	print*, 'Neq', (abs(Neq_mo-Neq_m)/dfloat(Neq_m))*100._dp, '%'
 	print*
-	print*, 'Comparison is valid until', N_comp
+!	print*, 'Comparison is valid until', N_comp
 	!TO FILE
 	write(13,*) '!Number of electrons: embedded, scattered and when both are equal'
 	write(13,*) '!Regular Simulation'
@@ -61,6 +64,71 @@ open(unit=13,file='td-info.dat',status='unknown')
 close(11)
 close(12)
 close(13)
+!SCATTERED ANGLES***************************************************************
+open(unit=11,file=dir_m//'sea.dat',status='unknown')
+open(unit=12,file=dir_mo//'sea.dat',status='unknown')
+open(unit=13,file='sea-error.dat',status='unknown')
+
+	!Mean
+	!Regular simulation data
+	r_sea_mean_m = 0
+	do i=1, Ns_m
+		read(11,*) r_sea, aux_int
+		r_sea_mean_m = r_sea_mean_m + r_sea
+	end do
+	r_sea_mean_m = r_sea_mean_m/Ns_m
+	
+	!Optimized simulation data
+	r_sea_mean_mo = 0
+	do i=1, Ns_mo
+		read(12,*) r_sea, aux_int
+		r_sea_mean_mo = r_sea_mean_mo + r_sea
+	end do
+	r_sea_mean_mo = r_sea_mean_mo/Ns_m
+
+close(11)
+close(12)
+open(unit=11,file=dir_m//'sea.dat',status='unknown')
+open(unit=12,file=dir_mo//'sea.dat',status='unknown')
+
+	!Standard deviation
+	!IMPORTANT: CHECK WHETHER OR NOT THIS NEEDS TO BE SQUARED
+	!Regular simulation data
+	r_sea_sd_m = 0
+	do i=1, Ns_m
+		read(11,*) r_sea, aux_int
+		r_sea_sd_m = r_sea_sd_m + norm2(r_sea - r_sea_mean_m)
+	end do
+	r_sea_sd_m = r_sea_sd_m/Ns_m
+	
+	!Optimized simulation data
+	r_sea_sd_mo = 0
+	do i=1, Ns_mo
+		read(12,*) r_sea, aux_int
+		r_sea_sd_mo = r_sea_sd_mo + norm2(r_sea - r_sea_mean_mo)
+	end do
+	r_sea_sd_mo = r_sea_sd_mo/Ns_mo
+
+	!TO CONSOLE
+	print*, 'Scattered angles mean (2D)'
+	print*, 'Regular', r_sea_mean_m
+	print*, 'Optimized', r_sea_mean_mo
+	print*
+	print*, 'Error [%]'
+	print*, (dabs(r_sea_mean_m-r_sea_mean_mo)/(r_sea_mean_m))*100._dp
+!	(abs(Ne_mo-Ne_m)/dfloat(Ne_m))*100._dp
+	print*, 'Error (2D)'
+	print*, norm2(r_sea_mean_m-r_sea_mean_mo)
+	print*
+	print*, 'Standard deviation'
+	print*, 'Regular', r_sea_sd_m
+	print*, 'Optimized', r_sea_sd_mo
+	print*
+	print*, 'Error [%]'
+	print*, (dabs(r_sea_sd_m-r_sea_sd_mo)/(r_sea_sd_m))*100._dp
+close(11)
+close(12)
+close(13)
 
 !CHARGE PATCH*******************************************************************
 !open(unit=11,file=dir_m//'cp.dat',status='unknown')
@@ -74,37 +142,5 @@ close(13)
 !close(11)
 !close(12)
 !close(13)
-
-!SCATTERED ANGLES***************************************************************
-
-!open(unit=13,file='sea.dat',status='unknown')
-
-!close(13)
-
-!open(unit=14,file='td.dat',status='unknown')
-
-!close(14)
-
-!	i = 0
-!	Ne = 0
-!	Ns = 0
-!	read(12,*) r_emb, aux
-!	read(13,*) r_sct, aux
-!	do k=1, 5000
-!		read(11,*) r_fep, i		
-!		if (all(r_fep .eq. r_emb)) then
-!			Ne = Ne + 1
-!			if (k .lt. 5000) read(12,*,IOSTAT=IOstatus) r_emb, aux
-!		else
-!			Ns = Ns + 1
-!			if (k .lt. 5000) read(13,*,IOSTAT=IOstatus) r_sct, aux
-!		end if
-!		print*, Ne, Ns, i, r_emb, r_sct
-!		write(14,*) Ne, Ns, i, real(Ne,dp)/i, real(Ns,dp)/i
-!	end do
-!close(11)
-!close(12)
-!close(13)
-!close(14)
 
 end program
