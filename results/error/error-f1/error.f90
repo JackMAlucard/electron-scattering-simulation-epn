@@ -10,7 +10,7 @@ integer, parameter :: N = 5000
 !Neq is for when embedded and scattered electrons are equal
 integer :: Ne_m, Ns_m, Neq_m
 integer :: Ne_mo, Ns_mo, Neq_mo
-integer :: i, aux_int!, k, iostatus
+integer :: i, aux_int, N_comp! N_comp number up until which comparison is valid
 real(dp), dimension(2) :: aux_dp
 real(dp), dimension(3) :: r_fep, r_emb, r_sct
 
@@ -24,6 +24,7 @@ open(unit=13,file='td-info.dat',status='unknown')
 		if (Ne_m .eq. Ns_m) Neq_m = aux_int
 		read(12,*) Ne_mo, Ns_mo, aux_int, aux_dp
 		if (Ne_mo .eq. Ns_mo) Neq_mo = aux_int
+		if ((Ne_m .eq. Ne_mo) .and. (Ns_m .eq. Ns_mo)) N_comp = aux_int
 	end do
 	!TO CONSOLE
 	print*, 'Regular'
@@ -41,6 +42,7 @@ open(unit=13,file='td-info.dat',status='unknown')
 	print*, 'Ns', (abs(Ns_mo-Ns_m)/dfloat(Ns_m))*100._dp, '%'
 	print*, 'Neq', (abs(Neq_mo-Neq_m)/dfloat(Neq_m))*100._dp, '%'
 	print*
+	print*, 'Comparison is valid until', N_comp
 	!TO FILE
 	write(13,*) '!Number of electrons: embedded, scattered and when both are equal'
 	write(13,*) '!Regular Simulation'
@@ -61,17 +63,17 @@ close(12)
 close(13)
 
 !CHARGE PATCH*******************************************************************
-open(unit=11,file=dir_m//'cp.dat',status='unknown')
-open(unit=12,file=dir_mo//'cp.dat',status='unknown')
-open(unit=13,file='cp-error.dat',status='unknown')
+!open(unit=11,file=dir_m//'cp.dat',status='unknown')
+!open(unit=12,file=dir_mo//'cp.dat',status='unknown')
+!open(unit=13,file='cp-error.dat',status='unknown')
 
-	do i=1, Ne
+!	do i=1, Ne
 	
-	end do
+!	end do
 
-close(11)
-close(12)
-close(13)
+!close(11)
+!close(12)
+!close(13)
 
 !SCATTERED ANGLES***************************************************************
 

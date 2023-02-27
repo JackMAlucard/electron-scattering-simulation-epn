@@ -31,6 +31,36 @@ Preliminar
 Time distribution
 	Calcular el número de electrón en el que son iguales incrustados y dispersados
 
+Para charge patch y scattered angles, la comparación que puedo hacer es solamente
+hasta el punto en el que los electrones son igualmente incrustados y dispersados
+debo comparar la evolución de los índices de incrustados y dispersados
+y solo en esos electrones calcular el error
+
+
+Solo se cumple esto con los iniciales
+Entonces tengo dos opciones
+
+Aumentar el rango efectivo y repetir las simulaciones
+Comparar de otra manera los resultados
+
+Otras al
+
+
+Reunión con Ramon
+
+Mostrar los resultados para discutir discrepacias
+Comentar opciones de comparación de resultados
+
+La única alternativa (simple) que se me ocurre es la idea errónea inicial
+Comparar los electrones en orden tomando como máximo el menor número de electrones
+
+Las otras ideas ya serían más elaboradas
+
+
+
+
+
+
 Charge patch
 Ap 1
 	Gráfico 2D
