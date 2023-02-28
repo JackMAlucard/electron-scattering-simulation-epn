@@ -4,8 +4,8 @@ implicit none
 integer, parameter :: dp = selected_real_kind(15, 307)
 !PARAMETERS
 !Directories' adresses
-character(*), parameter :: dir_m = '../../main/main-f1/'
-character(*), parameter :: dir_mo = '../../main-opt/main-opt-f1/'
+character(*), parameter :: dir_m = '../../main/main-f3/'
+character(*), parameter :: dir_mo = '../../main-opt/main-opt-f3/'
 integer, parameter :: N = 5000
 !Neq is for when embedded and scattered electrons are equal
 integer :: Ne_m, Ns_m, Neq_m

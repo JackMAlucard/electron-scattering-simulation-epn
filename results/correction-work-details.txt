@@ -49,10 +49,27 @@ Calcular el error porcentual en x, y, r entre estos centros
 Hallar la desviación estándar a modo de medida de dispersión
 Calcular el error porcentual entre la dispersión
 
-Graficar:
+Algo adicional que puedo medir en tema de errores es
+el valor medio de la distancia desde el ángulo 0
+y la desviación estándar del mismo
+considerando la cuasi-simetría que se ve en la dispersión de los ángulos
+
+
+GRAFICAR:
+Para cada energía 1 gráfico:
+x-y: posición de las medias de los distintos ángulos
+diferenciar simulación optimizada de regular con color
+o diferenciar ángulos con colores, y entre tipo de simulación con tipo de punto
+
 x: Ángulo
 y: Desviación estándar
 z (color): energía
+
+
+
+
+
+
 
 
 Reunión con Ramon
