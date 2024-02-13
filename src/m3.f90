@@ -71,7 +71,7 @@ real(dp), intent(in) :: d, dt	!Interatomic distance and time step size
 real(dp), intent(inout) :: r(3), v(3), a(3)
 real(dp) :: ak(3)
 real(dp) :: material_height
-integer(i8) :: im, jm, km
+!integer(i8) :: im, jm, km
 integer(i8) :: i, j, k
 	!Velocity Verlet step
 	!It is not necessary to compute the time t = t0 + i*dt
@@ -118,11 +118,12 @@ end subroutine vv_step
 !The embedded and scattered electrons final positions are stored in the (N,3)
 !arrays e_emb and e_sct respectively. 
 !The simulation is ended either when the electron distance d to the origin of 
-!coordinates (which approximates the center of the bulk) is greater than that 
+!coordinates (which approximates the center of the bulk) is greater than the 
 !initial distance d0, or when the number of iterations k is equal or greater 
-!than the estimated number of iterations T.
+!than the estimated number of iterations T (how is this estimated?)
 !The simulation is also ended if the electron gets embedded on the bulk, at
 !which point the number of embedded electrons N_e is updated/increased.
+!I NEED to explain WHY these conditions for the end of the trajectory are set.
 subroutine trajectory(i, N, P, ou, Ne, Ns, emb, sct, Nx, Ny, Nz, atoms, Z, d0, T, d, dt, l, r, v, a)
 integer(i8), intent(in) :: i, N, P, ou, Nx, Ny, Nz, T
 integer, intent(in) :: Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1)

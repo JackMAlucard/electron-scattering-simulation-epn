@@ -52,8 +52,8 @@ end function dinAUfromSI
 
 !PRN GENERATION SUBROUTINES*****************************************************
 !Subroutine which generates a pseudorandom number from the standard uniform
-!distribution over the range (0,1].
-!Taken from https://masuday.github.io/fortran_tutorial/random.html
+!distribution over the range (0,1] to avoid possible error if 0 is generated.
+!Adapted from https://masuday.github.io/fortran_tutorial/random.html
 subroutine random_stduniform(u)
 real(dp), intent(out) :: u
 real(dp) :: r
@@ -63,7 +63,7 @@ end subroutine random_stduniform
 
 !Subroutine which generates a pseudorandom number from the uniform
 !distribution over the range [a,b), assuming a<b.
-!Modified from https://masuday.github.io/fortran_tutorial/random.html
+!Adapted from https://masuday.github.io/fortran_tutorial/random.html
 subroutine random_uniform(x,a,b)
 real(dp), intent(out) :: x
 real(dp), intent(in) :: a, b
@@ -95,9 +95,10 @@ real(dp) :: u1, u2
 	x2 = u2*sigma + mu
 end subroutine random_normal
 
-!Subroutine which generates a pseudorandom number following the exponential
-!probability distribution with rate parameter lambda > 0 and mean 1/lambda.
-!Taken from https://www.eg.bucknell.edu/~xmeng/Course/CS6337/Note/master/node50.html
+! Subroutine which generates a pseudorandom number following the exponential
+! probability distribution with parameter lambda > 0 and mean 1/lambda.
+! Adapted from:
+! https://www.eg.bucknell.edu/~xmeng/Course/CS6337/Note/master/node50.html
 subroutine random_exponential(x,lambda)
 real(dp), intent(out) :: x
 real(dp), intent(in) :: lambda

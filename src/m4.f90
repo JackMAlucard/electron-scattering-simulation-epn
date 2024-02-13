@@ -135,6 +135,12 @@ end subroutine akEE_FF
 !and ONLY if there is AT LEAST one embedded electron.
 !Acceleration due to neutral atoms is ONLY computed if near the material zone, 
 !i.e. its height is less than half the interatomic distance and lower.
+!This subroutine only computes the acceleration due to nearby neutral atoms,
+!in comparison with the original vv_step, which computed the acceleration from
+!all neutral atoms in the bulk. This is a good approximation and significantly 
+!speeds up the simulation.
+!This subroutine is used to compute the steps when near the material zone,
+!which is why it is called Near Field (NF).
 subroutine vv_step_NF(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
 integer(i8), intent(in) :: N_e, N_et, Nx, Ny, Nz
 integer, intent(in) :: Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1)
