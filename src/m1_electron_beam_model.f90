@@ -50,7 +50,7 @@ module m1_electron_beam_model
 
 		!Unit conversion
 		call angstrom_to_atomic_distance_conversion(spot_size)
-		call kev_to_atomic_energy_conversion(beam_energy
+		call kev_to_atomic_energy_conversion(beam_energy)
 		call angstrom_to_atomic_distance_conversion(distance_to_target)
 		grazing_angle = grazing_angle*PI/180
 
