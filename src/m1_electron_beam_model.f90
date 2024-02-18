@@ -45,6 +45,7 @@ module m1_electron_beam_model
 		real(dp) :: positions_mu, positions_sigma, energy_mu, energy_sigma
 		real(dp) :: x, y, z, vx, vy, vz
 		real(dp) :: energy_1, energy_2
+		real(dp) :: traslation_vector(3)
 		integer(i8) :: i
 
 		!Unit conversion
