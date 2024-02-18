@@ -92,28 +92,32 @@ module m0_utilities
 		x = -dlog(u)/lambda
 	end subroutine random_exponential
 
-	!VECTOR ROTATION ALONG THE X-AXIS*********************************************
+	!VECTOR TRANSFORMATIONS SUBROUTINES*******************************************
+	subroutine vector_translation(traslation_vector, vector)
+		real(dp), intent(in) :: translation_vector(3)
+		real(dp), intent(inout) :: vector
+		vector = vector + translation_vector
+	end subroutine vector_translation
+	
 !	subroutine matrix_vector_product(M, V)
-	subroutine rotation_about_x_axis(theta, v)
+	subroutine rotation_about_x_axis(theta, vector)
 		real(dp), intent(in) :: angle
-		real(dp), intent(inout) :: v(3)
-		real(dp) :: Rx(3,3), v_aux(3)
-		integer :: i, j
+		real(dp), intent(inout) :: vector(3)
+		real(dp) :: R(3,3), aux_vector(3)
+		integer :: i
 		
 		!Rotation matrix
 		R(1,:) = (/1._dp, 0._dp, 0._dp/)
 		R(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
 		R(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
 		
-		v_aux = 0._dp
+		aux_vector = 0
 
 		do i = 1, 3
-			do j = 1, 3
-				v_aux(i) = v_aux(i) + Rx(i,j)*v(j)
-			end do
+			aux_vector(:) = aux_vector(:) + Rx(:,i)*vector(i)
 		end do
-
-		v = v_aux
+		
+		vector = aux_vector
 
 	end subroutine rotation_about_x_axis
 
