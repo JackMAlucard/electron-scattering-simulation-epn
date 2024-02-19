@@ -42,6 +42,7 @@ module m2_dielectric_material_model
 	! The subroutine also transforms the magnitudes to au.
 	subroutine setup_simple_silica_model(grid_boundaries, grid_points, &
 																			 grid_charges)
+		implicit none
 		integer(i8), intent(in) :: grid_boundaries(3)
 		real(dp), allocatable, intent(out):: grid_points(:,:,:,:)
 		integer, allocatable, intent(out):: grid_charges(:,:,:)

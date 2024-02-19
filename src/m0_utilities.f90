@@ -61,6 +61,7 @@ module m0_utilities
 	! normal distribution (mean = 0 and standard deviation = 1).
 	! Adapted from: https://masuday.github.io/fortran_tutorial/random.html
 	subroutine random_std_normal(z1, z2)
+		implicit none
 		real(dp), intent(out) :: z1, z2
 		real(dp) :: u1, u2
 		call random_std_uniform(u1)
@@ -72,6 +73,7 @@ module m0_utilities
 	! Subroutine which generates two random number following the general
 	! normal distribution with mean 'mu' and standard deviation 'sigma'.
 	subroutine random_normal(mu, sigma, x1, x2)
+		implicit none
 		real(dp), intent(in) :: mu, sigma
 		real(dp), intent(out) :: x1, x2
 		real(dp) :: z1, z2
@@ -85,6 +87,7 @@ module m0_utilities
 	! Adapted from:
 	! https://www.eg.bucknell.edu/~xmeng/Course/CS6337/Note/master/node50.html
 	subroutine random_exponential(lambda, x)
+		implicit none
 		real(dp), intent(in) :: lambda
 		real(dp), intent(out) :: x
 		real(dp) :: r
@@ -94,6 +97,7 @@ module m0_utilities
 
 	!VECTOR TRANSFORMATIONS SUBROUTINES*******************************************
 	subroutine vector_translation(traslation_vector, vector)
+		implicit none
 		real(dp), intent(in) :: translation_vector(3)
 		real(dp), intent(inout) :: vector
 		vector = vector + translation_vector
@@ -101,6 +105,7 @@ module m0_utilities
 	
 !	subroutine matrix_vector_product(M, V)
 	subroutine rotation_about_x_axis(theta, vector)
+		implicit none
 		real(dp), intent(in) :: angle
 		real(dp), intent(inout) :: vector(3)
 		real(dp) :: R(3,3), aux_vector(3)

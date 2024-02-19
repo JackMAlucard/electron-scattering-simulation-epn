@@ -20,22 +20,21 @@ module m1_electron_beam_model
 ! The subroutine converts the magnitudes to the atomic system of units.
 ! The vectors generated are in the beam reference system, the 'primed' system.
 ! subroutine electron_beam(e_pos, e_vel, e_acc, N_in, E_in, R_in, prob_dist_in)
-  subroutine setup_electron_beam(num_electrons, spot_size, &
-                                 beam_energy, beam_spread, &
-                                 distance_to_target, grazing_angle, &
-                                 electron_positions, electron_velocities, &
-                                 electron_accelerations)
-!  subroutine setup_electron_beam_model(num_electrons, spot_size, &
-!                                       beam_energy, beam_spread, &
-!                                       distance_to_target, &
-!                                       grazing_angle, &
-!                                       electron_positions, &
-!                                       electron_velocities, &
-!                                       electron_accelerations)
 	!subroutine electron_beam(N, E, R, eb_pos, eb_vel, eb_acc)
 	!subroutine electron_beam(N, E, R, eb_r, eb_v, eb_a)
 	!subroutine electron_beam(N, E, R, r_eb, v_eb, a_eb)
-		!real(dp), allocatable, intent(out) :: eb_pos(:,:), eb_vel(:,:), eb_acc(:,:)
+!  subroutine setup_electron_beam(num_electrons, spot_size, &
+!                                 beam_energy, beam_spread, &
+!                                 distance_to_target, grazing_angle, &
+!                                 electron_positions, electron_velocities, &
+!                                 electron_accelerations)
+  subroutine setup_electron_beam_model(num_electrons, spot_size, &
+                                       beam_energy, beam_spread, &
+                                       distance_to_target, grazing_angle, &
+                                       electron_positions, &
+                                       electron_velocities, &
+                                       electron_accelerations)
+		implicit none
 		integer(i8), intent(in) :: num_electrons
 		real(dp), intent(in) :: spot_size, beam_energy, beam_spread
 		real(dp), intent(in) :: distance_to_target, grazing_angle
@@ -109,6 +108,6 @@ module m1_electron_beam_model
 			
 		end do
 
-	end subroutine setup_electron_beam
+	end subroutine setup_electron_beam_model
 
 end module m1_electron_beam_model
