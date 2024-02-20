@@ -1,58 +1,59 @@
-module m3
-use m0
-implicit none
+module m3_trajectory_computation
+	implicit none
+	use m0!, only ...
+	contains
 
-contains
+	! Acceleration of a projectile Electron interacting with a stationary target 
+	! Electron via the electrostatic Coulomb potential. 
+	! The input and output variables are in the atomic unit system (au).
+	! rp: r projectile, position of the incident electron (a0).
+	! rt: r target, position of the stationary electron (a0).
+	! a: Acceleration of the incident electron (...)
+	subroutine acceleration_due_to_electron(rp, rt, a)
+	!subroutine akEE(rp, rt, a)
+		real(dp), intent(in) :: rp(3), rt(3)
+		real(dp), intent(out) :: a(3)
+		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
+		rs = rp - rt
+		r = norm2(rs)
+		a = rs/(r**3)
+	end subroutine acceleration_due_to_electron
 
-!Acceleration of a projectile Electron interacting with a stationary target 
-!Electron via the electrostatic Coulomb potential. 
-!The input and output variables are in atomic units (au).
-!rp: r projectile, position of the incident electron (a0)
-!rt: r target, position of the stationary electron (a0)
-!a: Acceleration of the incident electron (aua)
-subroutine akEE(rp, rt, a)
-real(dp), intent(in) :: rp(3), rt(3)
-real(dp), intent(out) :: a(3)
-real(dp) :: rs(3), r !rs: r separation vector and its magnitude
-	rs = rp - rt
-	r = norm2(rs)
-	a = rs/(r**3)
-end subroutine akEE
-
-!Acceleration of a projectile Electron interacting with a stationary neutral 
-!Atom of atomic number Z via the electrostatic Thomas-Fermi potential.
-!The input and output are in atomic units (au).
-!rp: r projectile, position of the incident electron (a0)
-!rt: r target, position of the stationary neutral atom (a0)
-!Z: Atomic number of the stationary neutral atom.
-!a: Acceleration of the incident electron (aua)
-subroutine akEA(rp, rt, Z, a)
-real(dp), intent(in) :: rp(3), rt(3)
-integer, intent(in) :: Z
-real(dp), intent(out) :: a(3)
-real(dp), parameter :: Auc(3) = (/0.10_dp, 0.55_dp, 0.35_dp/)	!A upper case
-real(dp), parameter :: alc(3) = (/6.00_dp, 1.20_dp, 0.30_dp/)	!a lower case
-real(dp), parameter :: b0inv = 1.1295078101832_dp !b0inv = 1/b0
-real(dp) :: Zcr	!Cubic root of the atomic number
-real(dp) :: rs(3), r !r separation vector and its magnitude
-real(dp) :: chi, psi, aux
-integer(i8) :: i
-	!Cubic root of the atomic number
-	Zcr = Z**(1._dp/3)
-	!Electron-atom relative position
-	rs = rp - rt
-	r = norm2(rs)
-	!Computing chi and psi
-	chi = 0
-	psi = 0
-	do i=1, 3
-		aux = Auc(i)*dexp(-alc(i)*r*Zcr*b0inv)
-		chi = chi + aux
-		aux = aux*alc(i)
-		psi = psi + aux
-	end do
-	a = -Z*( (chi/(r**3)) + ((psi*Zcr*b0inv)/(r**2)) )*rs
-end subroutine akEA
+	! Acceleration of a projectile Electron interacting with a stationary neutral 
+	! Atom of atomic number Z via the electrostatic Thomas-Fermi potential.
+	! The input and output are in atomic units system (au).
+	! rp: r projectile, position of the incident electron (a0).
+	! rt: r target, position of the stationary neutral atom (a0).
+	! Z: Atomic number of the stationary neutral atom.
+	! cbrt_Z: Cube root of the atomic number of the stationary neutral atom.
+	! a: Acceleration of the incident electron (...)
+	subroutine acceleration_due_to_atom(rp, rt, Z, cbrt_Z, a)
+	!subroutine akEA(rp, rt, Z, a)
+		real(dp), intent(in) :: rp(3), rt(3)
+		integer, intent(in) :: Z, cbrt_Z
+		real(dp), intent(out) :: a(3)
+		real(dp), parameter :: a_coef(3) = (/0.10_dp, 0.55_dp, 0.35_dp/)
+		real(dp), parameter :: b_coef(3) = (/6.00_dp, 1.20_dp, 0.30_dp/)
+		real(dp), parameter :: b0_inv = ((2**7)/(3*PI)**2)**(1/3._dp)!b0_inv = 1/b0
+		!real(dp), parameter :: b0_inv = 1.1295078101832_dp !b0_inv = 1/b0
+		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
+		real(dp) :: chi, psi, aux
+		integer(i8) :: i
+		!Electron-atom relative position
+		rs = rp - rt
+		r = norm2(rs)
+		!Computing chi and psi
+		chi = 0
+		psi = 0
+		do i = 1, 3
+			aux = a_coef(i)*dexp(-b_coef(i)*r*b0_inv*cbrt_Z)
+			chi = chi + aux
+			aux = aux*b_coef(i)
+			psi = psi + aux
+		end do
+		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs
+	!	a = -Z*( (chi/(r**3)) + ((psi*b0_inv*cbrt_Z)/(r**2)) )*rs
+	end subroutine acceleration_due_to_atom
 
 !Subroutine which computes a time step of the Velocity Verlet algorithm
 !used to compute the trajectory of a projectile electron interacting with N_e
@@ -219,4 +220,4 @@ real(dp) :: tk
 	end do
 end subroutine trajectory
 
-end module
+end module m3_trajectory_computation
