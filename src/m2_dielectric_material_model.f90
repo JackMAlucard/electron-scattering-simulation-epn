@@ -46,12 +46,14 @@ module m2_dielectric_material_model
 		integer(i8), intent(in) :: grid_boundaries(3)
 		real(dp), allocatable, intent(out):: grid_points(:,:,:,:)
 		integer, allocatable, intent(out):: grid_charges(:,:,:)
-		real(dp), parameter :: interatomic_distance = 1.77!Å
+		real(dp) :: interatomic_distance
 		real(dp) :: x, y, z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
-				
-		!Unit conversion
+		
+		! Interatomic distance: 1.77 Å
+		interatomic_distance = 1.77
+		! Unit conversion
 		call angstrom_to_atomic_distance_conversion(interatomic_distance)
 		
 		Nx = grid_boundaries(1)
