@@ -10,6 +10,11 @@ module m0_utilities
 
 	! NUMERICAL CONSTANTS*********************************************************
 	real(dp), parameter :: PI = dacos(-1._dp)
+	real(dp), parameter :: INTERATOMIC_DISTANCE_SIO2 = 1.77/0.5291772! 1.77 Å
+	real(dp), parameter :: MATERIAL_HEIGHT_SIO2 = 0.5*INTERATOMIC_DISTANCE_SIO2
+	real(dp), parameter :: MEAN_FREE_PATH_SIO2 = 33.74649829! a0
+	real(dp), parameter :: CROSS_SECTION_SIO2 = 1/MEAN_FREE_PATH_SIO2 !Macro
+	l = 1/33.7465!SiO2 mean free using weighted scattering cross sections
 
 	contains
 	! UNIT CONVERSION SUBROUTINES*************************************************
@@ -108,22 +113,17 @@ module m0_utilities
 		implicit none
 		real(dp), intent(in) :: angle
 		real(dp), intent(inout) :: vector(3)
-		real(dp) :: R(3,3), aux_vector(3)
+		real(dp) :: Rx(3,3), aux_vector(3)
 		integer :: i
-		
 		!Rotation matrix
-		R(1,:) = (/1._dp, 0._dp, 0._dp/)
-		R(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
-		R(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
-		
+		Rx(1,:) = (/1._dp, 0._dp, 0._dp/)
+		Rx(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
+		Rx(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
 		aux_vector = 0
-
 		do i = 1, 3
 			aux_vector(:) = aux_vector(:) + Rx(:,i)*vector(i)
 		end do
-		
 		vector = aux_vector
-
 	end subroutine rotation_about_x_axis
 
 end module m0_utilities
