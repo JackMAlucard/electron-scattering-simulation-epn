@@ -27,16 +27,14 @@ module m1_electron_beam_model
 !                                 distance_to_target, grazing_angle, &
 !                                 electron_positions, electron_velocities, &
 !                                 electron_accelerations)
-  subroutine setup_electron_beam_model(num_electrons, spot_size, &
-                                       beam_energy, beam_spread, &
-                                       distance_to_target, grazing_angle, &
-                                       electron_positions, &
-                                       electron_velocities, &
-                                       electron_accelerations)
+  subroutine setup_electron_beam_model &
+  (num_electrons, spot_size, beam_energy, beam_spread, &
+  beam_target_distance, grazing_angle, electron_positions, &
+  electron_velocities, electron_accelerations)
 		implicit none
 		integer(i8), intent(in) :: num_electrons
 		real(dp), intent(in) :: spot_size, beam_energy, beam_spread
-		real(dp), intent(in) :: distance_to_target, grazing_angle
+		real(dp), intent(in) :: beam_target_distance, grazing_angle
 		real(dp), allocatable, intent(out) :: electron_positions(:,:)
 		real(dp), allocatable, intent(out) :: electron_velocities(:,:)
 		real(dp), allocatable, intent(out) :: electron_accelerations(:,:)
@@ -45,27 +43,24 @@ module m1_electron_beam_model
 		real(dp) :: energy_1, energy_2
 		real(dp) :: traslation_vector(3)
 		integer(i8) :: i
-
 		! Unit conversion
 		call angstrom_to_atomic_distance_conversion(spot_size)
 		call kev_to_atomic_energy_conversion(beam_energy)
 		call angstrom_to_atomic_distance_conversion(distance_to_target)
 		grazing_angle = grazing_angle*PI/180
-
+		! Allocating electron vectors
 		allocate(electron_positions(num_electrons,3))
 		allocate(electron_velocities(num_electrons,3))
 		allocate(electron_accelerations(num_electrons,3))
-		
 		! Electron positions follow a normal distribution with
 		! Full Width at Tenth of Maximum (FWTM):
 		! FWTM = 2*sqrt(2*ln(10))*sigma ~ 4.29193*sigma
 		positions_mu = 0
 		positions_sigma = spot_size/(2*dsqrt(2*dlog(10._dp)))
-		
 		! Electron energies follow a normal distribution with
 		energy_mu = beam_energy
 		energy_sigma = (energy_spread/100)*beam_energy
-
+		! Generating electron arrays
 		do i = 1, num_electrons
 			! Generating positions
 			! x and y coordinates
@@ -73,11 +68,9 @@ module m1_electron_beam_model
 			! z coordinate
 			z = 0
 			electron_positions(i,:) = (/x, y, z/)
-
 			! Generating velocities
 			vx = 0
 			vy = 0
-
 			! Since two numbers are generated in each call of random_normal
 			! Using this if-else structure I avoid generating unnecessary numbers
 			if (mod(i+1,2) .eq. 0) then
@@ -87,26 +80,19 @@ module m1_electron_beam_model
 				vz = dsqrt(2*energy_2)
 			end if
 			electron_velocities(i,:) = (/vx, vy, vz/)
-			
 			! Initializing accelerations
 			electron_accelerations(i,:) = 0
-			
 		end do
-				
 		! Transforming electron beam vectors
-		translation_vector = (/0._dp, 0._dp, -distance_to_target/)
-		
+		translation_vector = (/0._dp, 0._dp, -beam_target_distance/)
 		do i = 1, num_electrons
 			! Initial positions translation
 			call vector_translation(traslation_vector, electron_positions(i,:))
 !				electron_positions(i,:) = electron_positions(i,:) + T
-			
 			! Rotation around x-axis
 			call rotation_about_x_axis(grazing_angle, electron_positions(i,:))
 			call rotation_about_x_axis(grazing_angle, electron_velocities(i,:))
-			
 		end do
-
 	end subroutine setup_electron_beam_model
 
 end module m1_electron_beam_model
