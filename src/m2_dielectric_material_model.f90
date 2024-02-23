@@ -40,65 +40,53 @@ module m2_dielectric_material_model
 	! indices label the atom via its x, y, and z integer position labels, the last 
 	! index corresponds to the position coordinates.
 	! The subroutine also transforms the magnitudes to au.
-	subroutine setup_simple_silica_model(grid_boundaries, grid_points, &
-																			 grid_charges)
+	subroutine setup_simple_silica_model &
+		(grid_boundaries, atom_positions, atom_charges)
 		implicit none
 		integer(i8), intent(in) :: grid_boundaries(3)
-		real(dp), allocatable, intent(out):: grid_points(:,:,:,:)
-		integer, allocatable, intent(out):: grid_charges(:,:,:)
-		real(dp) :: interatomic_distance
-		real(dp) :: x, y, z
+		real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
+		integer, allocatable, intent(out) :: atom_charges(:,:,:)
+		real(dp) :: d, x, y, z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
 		
-		! Interatomic distance: 1.77 Å
-		interatomic_distance = 1.77
-		! Unit conversion
-		call angstrom_to_atomic_distance_conversion(interatomic_distance)
-		
+		! Getting material grid boundaries
 		Nx = grid_boundaries(1)
 		Ny = grid_boundaries(2)
 		Nz = grid_boundaries(3)
 		
-		! Grid positions and charges indices
-		!|i| = 2*Nx + 1	--> i = -Nx, ..., 0, ..., Nx
-		!|j| = Ny + 1		--> j = 0, ..., -Ny
-		!|k| = 2*Nz + 1	--> k = -Nz, ..., 0, ..., Nz
-		allocate(grid_points(-Nx:Nx,-Ny:0,-Nz:Nz,3))
-		allocate(grid_charges(-Nx:Nx,-Ny:0,-Nz:Nz))
-		
-		! Originally, both arrays had an extra slot after both boundaries
-		! I don't remember if this functionality is really necessary,
-		! since the for loop does not reach those indices here,
-		! however, I did initially fill both arrays with zeroes, 
-		! so, I'll keep these lines for the time being here in case they
-		! really are necessary after all.
-		!	allocate(ssm_r(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1, 3))
-		!	allocate(ssm_Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1))
-		!	ssm_r = 0
-		!	ssm_Z = 0
+		! Grid points indices
+		! |i| = 2*Nx + 1	--> i = -Nx, ..., 0, ..., Nx
+		! |j| = Ny + 1		--> j = 0, ..., -Ny
+		! |k| = 2*Nz + 1	--> k = -Nz, ..., 0, ..., Nz
+		! The arrays are allocated with an extra position added
+		! to both sides of their boundaries, which won't store atoms
+		! which is why they are initialized and left with zero values
+		allocate(atom_positions(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1, 3))
+		allocate(atom_charges(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1))
+		atom_positions = 0
+		atom_charges = 0
 
 		do i = -Nx, Nx
-			x = i*interatomic_distance
+			x = i*INTERATOMIC_DISTANCE_SIO2
 			do j = 0, -Ny, -1
-				y = j*interatomic_distance
+				y = j*INTERATOMIC_DISTANCE_SIO2
 				do k = -Nz, Nz
-					z = k*interatomic_distance
-					grid_points(i, j, k, :) = (/x, y, z/)
+					z = k*INTERATOMIC_DISTANCE_SIO2
+					atom_positions(i,j,k,:) = (/x, y, z/)
 					!Silicon positions, i and k indices are both even 
 					if (mod(abs(i),2) .eq. 0 .and. mod(abs(k),2) .eq. 0) then
-						grid_charges(i,j,k) = 14
+						atom_charges(i,j,k) = 14
 					!Empty positions, i and k indices are both odd
 					else if (mod(abs(i),2) .eq. 1 .and. mod(abs(k),2) .eq. 1) then
-						grid_charges(i,j,k) = 0
+						atom_charges(i,j,k) = 0
 					!Oxygen positions, all other combinations
 					else
-						grid_charges(i,j,k) = 8
+						atom_charges(i,j,k) = 8
 					end if
 				end do
 			end do
 		end do
-
 	end subroutine simple_silica_model
 
 end module m2_dielectric_material_model
