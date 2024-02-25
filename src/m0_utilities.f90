@@ -10,11 +10,16 @@ module m0_utilities
 
 	! NUMERICAL CONSTANTS*********************************************************
 	real(dp), parameter :: PI = dacos(-1._dp)
-	real(dp), parameter :: INTERATOMIC_DISTANCE_SIO2 = 1.77/0.5291772! 1.77 Å
-	real(dp), parameter :: MATERIAL_HEIGHT_SIO2 = 0.5*INTERATOMIC_DISTANCE_SIO2
+	real(dp), parameter :: INTERATOMIC_DIST_SIO2 = 1.77/0.5291772! 1.77 Å
+	real(dp), parameter :: INTERATOMIC_DIST_SIO2_INV = 1/INTERATOMIC_DIST_SIO2
+	real(dp), parameter :: MATERIAL_HEIGHT_SIO2 = 0.5*INTERATOMIC_DIST_SIO2
 	real(dp), parameter :: MEAN_FREE_PATH_SIO2 = 33.74649829! a0
 	real(dp), parameter :: CROSS_SECTION_SIO2 = 1/MEAN_FREE_PATH_SIO2 !Macro
-	l = 1/33.7465!SiO2 mean free using weighted scattering cross sections
+	real(dp), parameter :: CELL_SCALE_FACTOR = 3
+	real(dp), parameter :: CELL_LENGTH = CELL_SCALE_FACTOR*INTERATOMIC_DIST_SIO2
+	real(dp), parameter :: CELL_LENGTH_INV = 1/CELL_LENGTH
+	real(dp), parameter :: EFFECTIVE_DISTANCE = 30!a0 !TBD IN TERMS OF OTHER VARS
+	real(dp), parameter :: MAX_EQUIVALENT_CHARGE = 180
 
 	contains
 	! UNIT CONVERSION SUBROUTINES*************************************************
