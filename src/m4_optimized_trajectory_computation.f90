@@ -44,11 +44,12 @@ module m4_optimized_trajectory_computation
 	! arrays that store the super electrons information for all cells.
 	subroutine setup_cells_and_super_electrons &
 		(num_electrons, material_boundaries, cells_boundaries, &
-		num_super_electrons, super_electron_charges, super_electron_positions)
+		num_super_electrons_in_cell, super_electron_charges, & 
+		super_electron_positions)
 		implicit none
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
 		integer(i8), intent(out) :: cells_boundaries(3)
-		integer(i8), intent(out) :: num_super_electrons(:,:,:)
+		integer(i8), intent(out) :: num_super_electrons_in_cell(:,:,:)
 		integer(i8), intent(out) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(out) :: super_electron_positions(:,:,:,:,:)
 		integer(i8) :: NCx, NCy, NCz
@@ -63,9 +64,9 @@ module m4_optimized_trajectory_computation
 		! extreme case in which all of the electrons are embedded into a single cell
 		max_super_electrons = (num_electrons - 1)/MAX_EQUIVALENT_CHARGE + 1
 		! Allocating array that stores the number of super electrons on all cells
-		allocate (num_super_electrons(-NCx:NCx,-NCy:-1,-NCz:NCz))
+		allocate (num_super_electrons_in_cell(-NCx:NCx,-NCy:-1,-NCz:NCz))
 		! Initializing as zero, since there are no super electrons at the start
-		num_super_electrons = 0
+		num_super_electrons_in_cell = 0
 		! Allocating array that stores the super electrons charges on all cells
 		allocate &
 		(super_electron_charges(-NCx:NCx,-NCy:-1,-NCz:NCz,max_super_electrons))
@@ -121,68 +122,82 @@ module m4_optimized_trajectory_computation
 		end if
 		cell_indices = (/i, j, k/)
 	end subroutine get_cell_indices
+	
+	! Subroutine that updated the values of the super electron arrays in the
+	! cell in which the projectile electron with position r gets embedded.
+	subroutine update_super_electron_in_cell &
+		(r, cells_boundaries, num_super_electrons, & 
+		super_electron_charges, super_electron_positions)
+		implicit none
+		real(dp), intent(in) :: r(3)
+		integer(i8), intent(in) :: cells_boundaries(3)
+		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
+		integer, intent(inout) :: super_electron_charges(:,:,:,:)
+		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
+		integer(i8) :: cell_indices(3), i, j, k
+		integer(i8) :: super_electron_num
+		integer :: super_electron_charge
+		real(dp) :: super_electron_r
+		! Getting embedded electron's cell based on its position r
+		call get_cell_indices(r, cells_boundaries, cell_indices)
+		i = cell_indices(1)
+		j = cell_indices(2)
+		k = cell_indices(3)		
+		! Getting number of super electrons in the cell
+		super_electron_num = num_super_electrons(i,j,k)
+		! Getting current super electron charge
+		super_electron_charge = super_electron_charges(i,j,k,n)
+		! Getting current super electron position
+		super_electron_r = super_electron_positions(i,j,k,n,:)
+		! If there are no embedded electrons in the cell, yet,
+		! i.e. no super electrons yet in the cell
+		if (super_electron_num .eq. 0) then
+			! Updating super electrons arrays initializing the first one 
+			num_super_electrons(i,j,k) = 1
+			super_electron_charges(i,j,k,super_electron_num) = 1
+			super_electron_positions(i,j,k,super_electron_num,:) = r
+		! If current super electron is not full of charge, add extra charge
+		! and compute new super electron position
+		else if (super_electron_charge .lt. MAX_EQUIVALENT_CHARGE) then
+			super_electron_charge = super_electron_charge + 1
+			super_electron_r = &
+			super_electron_r + (r - super_electron_r)/super_electron_charge
+			! Updating super electron arrays after adding a new embedded electron
+			super_electron_charges(i,j,k,super_electron_num) = super_electron_charge
+			super_electron_positions(i,j,k,super_electron_num,:) = super_electron_r
+		! If current super electron is full of charge, initialize next one
+		else if (super_electron_charge .eq. MAX_EQUIVALENT_CHARGE) then
+			super_electron_num = super_electron_num + 1
+			! Updating super electrons arrays initializing the next one
+			num_super_electrons(i,j,k) = super_electron_num
+			super_electron_charges(i,j,k,super_electron_num) = 1
+			super_electron_positions(i,j,k,super_electron_num,:) = r
+		else
+			!Everything else is an error (TB REMOVED)
+			print*, "ERROR"
+			print*, "Cell indices:", i,j,k
+			print*, "Super electron number:", super_electron_num
+			print*, "Super electron charge:", super_electron_charge
+			print*, "Super electron position:", super_electron_r
+		end if
+	end subroutine update_super_electron_in_cell
 
-!Subroutine that takes an electron position and equivalent electron bin indices,
-!and updates the equivalent electron bin arrays correspondingly.
-!There is no failsafe in the off case that the number of charges for a bin 
-!exceeds the value of max_neq, however it may not be necessary to add one by 
-!definition.
-subroutine add_electron_to_bin(i,j,k,r,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er)
-integer(i8), intent(in) :: i, j, k	!Electron bin indices
-real(dp), intent(in) :: r(3)	!Electron position
-integer(i8), intent(in) :: Nxb, Nyb, Nzb !Bins boundary indices
-integer(i8), intent(in) :: max_eq		!Maximum equivalent charge, 180 from tests (max 182)
-integer(i8), intent(in) :: max_neq	!Maximum number of equivalent electrons per bin, N_beam/max_eq+1
-integer(i8), intent(inout) :: b_neq(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb)!Current equivalent electron array
-integer(i8), intent(inout) :: b_ec(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq)!Equivalent charges array
-real(dp), intent(inout) :: b_er(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq,3)!Equivalent positions array
-integer(i8) :: neq, ec
-real(dp) :: er(3)
-	!Read number of equivalent electrons in the ijk bin
-	neq = b_neq(i,j,k)
-	!Read charge of current equivalent electron in the ijk bin
-	ec = b_ec(i,j,k,neq)
-	!Read equivalent position of equivalent electron in the ijk bin
-	er = b_er(i,j,k,neq,:)
-	!If current equivalent electron is not full of charge, add new charge
-	!And compute new equivalent position
-	if ((ec .ge. 0) .and. (ec .lt. max_eq)) then
-		ec = ec + 1
-		b_ec(i,j,k,neq) = ec
-		er = er + (r-er)/ec!Running mean computed so as to minimize precision errors
-		b_er(i,j,k,neq,:) = er
-	!If current equivalent electron is full, move to next equivalent electron
-	!And add new charge there
-	else if (ec .eq. max_eq) then
-		neq = neq + 1
-		b_neq(i,j,k) = neq
-		b_ec(i,j,k,neq) = 1
-		b_er(i,j,k,neq,:) = r
-	else
-	!Everything else is an error
-		print*, "ERROR"
-		print*, "i,j,k:", i,j,k
-		print*, "neq:", neq
-		print*, "ec:", ec
-		print*, "er", er
-	end if
-end subroutine add_electron_to_bin
-
-!Acceleration of a projectile Electron interacting with a stationary target 
-!equivalent electron of charge q via the electrostatic Coulomb potential. 
-!The input and output variables are in atomic units (au).
-!rp: r projectile, position of the incident electron (a0)
-!rt: r target, equivalent position of the stationary electron (a0)
-!a: Acceleration of the incident electron (aua)
-subroutine akEE_FF(q, rp, rt, a)
-integer(i8), intent(in) :: q
-real(dp), intent(in) :: rp(3), rt(3)
-real(dp), intent(out) :: a(3)
-real(dp) :: rs(3), r !rs: r separation vector and its magnitude
-	rs = rp - rt
-	r = norm2(rs)
-	a = (q*rs)/(r**3)
-end subroutine akEE_FF
+	! Acceleration of a projectile electron interacting with an embedded 
+	! super electron of charge q via the electrostatic Coulomb potential. 
+	! The input and output variables are in atomic units (au).
+	! rp: r projectile, position of the incident electron (a0)
+	! rt: r target, equivalent position of the stationary electron (a0)
+	! a: Acceleration of the incident electron (aua)
+	subroutine acceleration_due_to_super_electron(q, rp, rt, a)
+		implicit none
+		integer(i8), intent(in) :: q
+		real(dp), intent(in) :: rp(3), rt(3)
+		real(dp), intent(out) :: a(3)
+		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
+		rs = rp - rt
+		r = norm2(rs)
+		a = (q*rs)/(r**3)
+	end subroutine acceleration_due_to_super_electron
 
 !Subroutine which computes a time step of the Velocity Verlet algorithm
 !used to compute the trajectory of a projectile electron interacting with N_e
