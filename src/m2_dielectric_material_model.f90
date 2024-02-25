@@ -49,12 +49,10 @@ module m2_dielectric_material_model
 		real(dp) :: d, x, y, z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
-		
 		! Getting material grid boundaries
 		Nx = grid_boundaries(1)
 		Ny = grid_boundaries(2)
 		Nz = grid_boundaries(3)
-		
 		! Grid points indices
 		! |i| = 2*Nx + 1	--> i = -Nx, ..., 0, ..., Nx
 		! |j| = Ny + 1		--> j = 0, ..., -Ny
@@ -66,13 +64,12 @@ module m2_dielectric_material_model
 		allocate(atom_charges(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1))
 		atom_positions = 0
 		atom_charges = 0
-
 		do i = -Nx, Nx
-			x = i*INTERATOMIC_DISTANCE_SIO2
+			x = i*INTERATOMIC_DIST_SIO2
 			do j = 0, -Ny, -1
-				y = j*INTERATOMIC_DISTANCE_SIO2
+				y = j*INTERATOMIC_DIST_SIO2
 				do k = -Nz, Nz
-					z = k*INTERATOMIC_DISTANCE_SIO2
+					z = k*INTERATOMIC_DIST_SIO2
 					atom_positions(i,j,k,:) = (/x, y, z/)
 					!Silicon positions, i and k indices are both even 
 					if (mod(abs(i),2) .eq. 0 .and. mod(abs(k),2) .eq. 0) then
