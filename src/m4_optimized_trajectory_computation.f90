@@ -1,68 +1,126 @@
-module m4
-use m0
-use m3!Specify which subroutines?
-implicit none
+module m4_optimized_trajectory_computation
+	implicit none
+	use m0
+	use m3!Specify which subroutines?
+	contains
 
-contains
+	! Subroutine that takes the position of a projectile electron in 
+	! the material zone and outputs the indices to a nearby material atom.
+	subroutine get_nearby_atom_indices(r, material_boundaries, atom_indices)
+		implicit none
+		real(dp), intent(in) :: r(3)	! Projectile electron position
+		integer(i8), intent(in) :: material_boundaries
+		integer(i8), intent(out) :: atom_indices(3)
+		integer(i8) :: Nx, Ny, Nz, i, j, k
+		! Getting material grid boundaries
+		Nx = material_boundaries(1)
+		Ny = material_boundaries(2)
+		Nz = material_boundaries(3)
+		if (r(1) .ge. 0) then
+			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) + 1
+			if (i .gt. Nx) i = Nx
+		else
+			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (i .lt. -Nx) i = -Nx
+		end if
+		if (r(2) .ge. 0) then
+			j = 0
+		else
+			j = dint(r(2)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (j .lt. -Ny) j = -Ny
+		end if
+		if (r(3) .ge. 0) then
+			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) + 1
+			if (k .gt. Nz) k = Nz
+		else
+			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (k .lt. -Nz) k = -Nz
+		end if
+		atom_indices = (/i, j, k/)
+	end subroutine get_nearby_atom_indices
+	
+	! Subroutine that defines the cells indices, effectively partitioning the
+	! material zone into these cells. It also allocates and initializes the 
+	! arrays that store the super electrons information for all cells.
+	subroutine setup_cells_and_super_electrons &
+		(num_electrons, material_boundaries, cells_boundaries, &
+		num_super_electrons, super_electron_charges, super_electron_positions)
+		implicit none
+		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
+		integer(i8), intent(out) :: cells_boundaries(3)
+		integer(i8), intent(out) :: num_super_electrons(:,:,:)
+		integer(i8), intent(out) :: super_electron_charges(:,:,:,:)
+		real(dp), intent(out) :: super_electron_positions(:,:,:,:,:)
+		integer(i8) :: NCx, NCy, NCz
+		integer :: max_super_electrons
+		! Computing partition cells boundaries
+		NCx = material_boundaries(1)/CELL_SCALE_FACTOR + 1
+		NCy = material_boundaries(2)/CELL_SCALE_FACTOR + 1
+		NCz = material_boundaries(3)/CELL_SCALE_FACTOR + 1
+		cells_boundaries = (/NCx, NCy, NCz/)
+		! num_cells = (2*NCx)*(NCy)*(2*NCz)
+		! Maximum possible number of super electrons on a cell, considering the
+		! extreme case in which all of the electrons are embedded into a single cell
+		max_super_electrons = (num_electrons - 1)/MAX_EQUIVALENT_CHARGE + 1
+		! Allocating array that stores the number of super electrons on all cells
+		allocate (num_super_electrons(-NCx:NCx,-NCy:-1,-NCz:NCz))
+		! Initializing as zero, since there are no super electrons at the start
+		num_super_electrons = 0
+		! Allocating array that stores the super electrons charges on all cells
+		allocate &
+		(super_electron_charges(-NCx:NCx,-NCy:-1,-NCz:NCz,max_super_electrons))
+		! Initializing as zero, since there are no super electrons at the start
+		super_electron_charges = 0
+		! Allocating array that stores the super electrons positions on all cells
+		allocate &
+		(super_electron_positions(-NCx:NCx,-NCy:-1,-NCz:NCz,max_super_electrons,3))
+		! Initializing as zero, the positions will be given as the mean of the 
+		! positions of the electrons that form the super electron
+		super_electron_positions = 0
+	end subroutine setup_cells_and_super_electrons
 
-!Subroutine to sort electron inside the material zone
-subroutine sort_in_material(r,d,Nx,Ny,Nz,i,j,k)
-real(dp), intent(in) :: r(3), d	!Electron position and interatomic distance
-integer(i8), intent(in) :: Nx, Ny, Nz	!Material bound indices
-integer(i8), intent(out) :: i, j, k
-	if (r(1) .ge. 0._dp) then
-		i = dint(r(1)/d) + 1
-		if (i .gt. Nx) i = Nx
-	else
-		i = dint(r(1)/d) - 1
-		if (i .lt. -Nx) i = -Nx
-	end if
-	if (r(2) .ge. 0._dp) then
-		j = 0
-	else
-		j = dint(r(2)/d) - 1
-		if (j .lt. -Ny) j = -Ny
-	end if
-	if (r(3) .ge. 0._dp) then
-		k = dint(r(3)/d) + 1
-		if (k .gt. Nz) k = Nz
-	else
-		k = dint(r(3)/d) - 1
-		if (k .lt. -Nz) k = -Nz
-	end if
-end subroutine sort_in_material
-
-!Subroutine that takes the position of an electron r(3), the inverse of the 
-!bin "interatomic" distance d_bin_inv in a0 and determines the identifying indices i,j,k 
-!of the cubic bin to which the electron belongs to in order to group electrons 
-!together into an equivalent electron with charge greater or equal than one.
-!Included failsafe that avoids exceeding the bin region boundary indices.
-subroutine sort_electron(r,d_bin_inv,Nxb,Nyb,Nzb,i,j,k)
-real(dp), intent(in) :: r(3), d_bin_inv	!Electron position and interatomic distance
-integer(i8), intent(in) :: Nxb, Nyb, Nzb
-integer(i8), intent(out) :: i, j, k
-	if (r(1) .ge. 0._dp) then
-		i = dint(r(1)*d_bin_inv) + 1
-		if (i .gt. Nxb) i = Nxb
-	else
-		i = dint(r(1)*d_bin_inv) - 1
-		if (i .lt. -Nxb) i = -Nxb
-	end if
-	if (r(2) .ge. 0._dp) then
-		j = dint(r(2)*d_bin_inv) + 1
-		if (j .gt. -1) j = -1
-	else
-		j = dint(r(2)*d_bin_inv) - 1
-		if (j .lt. -Nyb) j = -Nyb
-	end if
-	if (r(3) .ge. 0._dp) then
-		k = dint(r(3)*d_bin_inv) + 1
-		if (k .gt. Nzb) k = Nzb
-	else
-		k = dint(r(3)*d_bin_inv) - 1
-		if (k .lt. -Nzb) k = -Nzb
-	end if
-end subroutine sort_electron
+	! Subroutine that takes the position of an electron r(3), the inverse cell 
+	! length (in a0) and determines the cell_indices of the cubic cell to which 
+	! the embedded electron belongs to in order to update the super electron in 
+	! that cell. 
+	! Electrons embedded after crossing the material boundaries will be included
+	! in the cell at the boundary of the partitions.
+	! The lowest possible index in the y-direction is -1 since there wouldn't be
+	! any cells with index 0 in any direction. Since the arrays have those slots,
+	! those MUST BE ignored, and as such were initialized and will remain zero.
+	subroutine get_cell_indices(r, cells_boundaries, cell_indices)
+		implicit none
+		real(dp), intent(in) :: r(3)
+		integer(i8), intent(in) :: cells_boundaries(3)
+		integer(i8), intent(out) :: cell_indices(3)
+		integer(i8) :: NCx, NCy, NCz
+		integer(i8) :: i, j, k
+		! Getting partition cells boundaries
+		NCx = cells_boundaries(1)
+		NCy = cells_boundaries(2)
+		NCz = cells_boundaries(3)
+		if (r(1) .ge. 0) then
+			i = dint(r(1)*CELL_LENGTH_INV) + 1
+			if (i .gt. NCx) i = NCx
+		else
+			i = dint(r(1)*CELL_LENGTH_INV) - 1
+			if (i .lt. -NCx) i = -NCx
+		end if
+		if (r(2) .ge. 0) then
+			j = -1 ! The top cell includes a bit more space
+		else
+			j = dint(r(2)*CELL_LENGTH_INV) - 1
+			if (j .lt. -NCy) j = -NCy
+		end if
+		if (r(3) .ge. 0) then
+			k = dint(r(3)*CELL_LENGTH_INV) + 1
+			if (k .gt. NCz) k = NCz
+		else
+			k = dint(r(3)*CELL_LENGTH_INV) - 1
+			if (k .lt. -NCz) k = -NCz
+		end if
+		cell_indices = (/i, j, k/)
+	end subroutine get_cell_indices
 
 !Subroutine that takes an electron position and equivalent electron bin indices,
 !and updates the equivalent electron bin arrays correspondingly.
@@ -410,4 +468,4 @@ real(dp) :: tk
 	end do
 end subroutine trajectory_opt
 
-end module
+end module m4_optimized_trajectory_computation
