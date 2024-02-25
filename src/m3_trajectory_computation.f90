@@ -10,7 +10,7 @@ module m3_trajectory_computation
 	! rt: r target, position of the stationary electron (a0).
 	! a: Acceleration of the incident electron (...)
 	subroutine acceleration_due_to_electron(rp, rt, a)
-	!subroutine akEE(rp, rt, a)
+		implicit none
 		real(dp), intent(in) :: rp(3), rt(3)
 		real(dp), intent(out) :: a(3)
 		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
@@ -28,7 +28,7 @@ module m3_trajectory_computation
 	! cbrt_Z: Cube root of the atomic number of the stationary neutral atom.
 	! a: Acceleration of the incident electron (...)
 	subroutine acceleration_due_to_atom(rp, rt, Z, cbrt_Z, a)
-	!subroutine akEA(rp, rt, Z, a)
+		implicit none
 		real(dp), intent(in) :: rp(3), rt(3)
 		integer, intent(in) :: Z, cbrt_Z
 		real(dp), intent(out) :: a(3)
@@ -69,6 +69,7 @@ module m3_trajectory_computation
 	subroutine time_step &
 		(num_embedded, material_boundaries, electron_positions, atom_positions, &
 		atom_charges, dt, r, v, a)
+		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
 		real(dp), intent(in) :: electron_positions(:,:), atom_positions(:,:,:,:)
 		integer, intent(in) :: , atom_charges(:,:,:)
@@ -142,6 +143,7 @@ module m3_trajectory_computation
 		material_boundaries, atom_positions, atom_charges, 
 		initial_distance_to_target, dt, r, v, a
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
+		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer(i8), intent(in) :: output_unit, material_boundaries(3)
 		real(dp), intent(in) :: atom_positions(:,:,:,)
