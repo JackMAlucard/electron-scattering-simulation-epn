@@ -54,7 +54,8 @@ module m3_trajectory_computation
 		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs ! CHECK THAT IT IS CORRECT
 	!	a = -Z*( (chi/(r**3)) + ((psi*b0_inv*cbrt_Z)/(r**2)) )*rs
 	end subroutine acceleration_due_to_atom
-
+	
+	! TO BE EDITED
 	! Subroutine which computes a time step of the Velocity Verlet algorithm
 	! used to compute the trajectory of a projectile electron interacting with N_e
 	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
@@ -67,11 +68,11 @@ module m3_trajectory_computation
 	! CONSIDER GIVING THIS ONE AN ADJECTIVE
 	! subroutine time_step(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
 	subroutine time_step &
-		(num_embedded, material_boundaries, electron_positions, atom_positions, &
+		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
 		atom_charges, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
-		real(dp), intent(in) :: electron_positions(:,:), atom_positions(:,:,:,:)
+		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
 		integer, intent(in) :: , atom_charges(:,:,:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
@@ -89,7 +90,7 @@ module m3_trajectory_computation
 		! ONLY computed if there is AT LEAST one embedded electron
 		if (num_embedded .gt. 0) then
 			do k = 1, num_embedded
-				rt = electron_positions(k,:)
+				rt = embedded_positions(k,:)
 				call acceleration_due_to_electron(r, rt, ak)
 				a = a + ak
 			end do
@@ -180,7 +181,7 @@ module m3_trajectory_computation
 			end if
 			! Computing next Velocity Verlet time step integration
 			call time_step &
-			(num_embedded, material_boundaries, electron_positions, &
+			(num_embedded, material_boundaries, embedded_positions, &
 			atom_positions, atom_charges, dt, r, v, a)
 			! Updating variables related to end conditions for distance and iterations
 			distance_to_target = norm2(r)
