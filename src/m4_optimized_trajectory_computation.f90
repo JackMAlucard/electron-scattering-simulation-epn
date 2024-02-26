@@ -188,144 +188,162 @@ module m4_optimized_trajectory_computation
 	! rp: r projectile, position of the incident electron (a0)
 	! rt: r target, equivalent position of the stationary electron (a0)
 	! a: Acceleration of the incident electron (aua)
-	subroutine acceleration_due_to_super_electron(q, rp, rt, a)
+	subroutine acceleration_due_to_super_electron(rp, rt, Q, a)
 		implicit none
-		integer(i8), intent(in) :: q
 		real(dp), intent(in) :: rp(3), rt(3)
+		integer, intent(in) :: Q
 		real(dp), intent(out) :: a(3)
 		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
 		rs = rp - rt
 		r = norm2(rs)
-		a = (q*rs)/(r**3)
+		a = (Q*rs)/(r**3)
 	end subroutine acceleration_due_to_super_electron
-
-!Subroutine which computes a time step of the Velocity Verlet algorithm
-!used to compute the trajectory of a projectile electron interacting with N_e
-!embedded electrons out of N_et total possible embedded electrons and a **SCC**
-!bulk of N_a=(2*Nx + 1)*(Ny + 1)*(2*Nz + 1) neutral atoms with atomic number Z.
-!The position of the embedded electrons is stored in the array e_emb(N_et,3).
-!Acceleration due to embedded electrons is computed for EVERY embedded electron
-!and ONLY if there is AT LEAST one embedded electron.
-!Acceleration due to neutral atoms is ONLY computed if near the material zone, 
-!i.e. its height is less than half the interatomic distance and lower.
-!This subroutine only computes the acceleration due to nearby neutral atoms,
-!in comparison with the original vv_step, which computed the acceleration from
-!all neutral atoms in the bulk. This is a good approximation and significantly 
-!speeds up the simulation.
-!This subroutine is used to compute the steps when near the material zone,
-!which is why it is called Near Field (NF).
-subroutine vv_step_NF(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
-integer(i8), intent(in) :: N_e, N_et, Nx, Ny, Nz
-integer, intent(in) :: Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1)
-real(dp), intent(in):: emb(N_et,3), atoms(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1,3)
-real(dp), intent(in) :: d, dt	!Interatomic distance and time step size
-real(dp), intent(inout) :: r(3), v(3), a(3)
-real(dp) :: ak(3)
-real(dp) :: material_height
-integer(i8) :: im, jm, km
-integer(i8) :: i, j, k
-	!Velocity Verlet step
-	!It is not necessary to compute the time t = t0 + i*dt
-	r = r + v*dt + 0.5*a*dt*dt
-	v = v + 0.5*a*dt
-	!Computing acceleration after time step
-	a = 0
-	!Acceleration due to embedded electrons,
-	!ONLY computed if there is AT LEAST one embedded electron
-	if (N_e .gt. 0) then
-		do k = 1, N_e
-			call akEE(r, emb(k,:), ak)
-			a = a + ak
-		end do
-	end if
-	!Acceleration due to neutral atoms
-	!ONLY computed if near the material zone, i.e. 
-	material_height = atoms(0,0,0,2) + 0.5*d
-	if (r(2) .lt. material_height) then
-		call sort_in_material(r,d,Nx,Ny,Nz,im,jm,km)
-		do i = im-1, im+1 
-			do j = jm-1, jm+1
-				do k = km-1, km+1
-					!Only compute acceleration with positions with atoms
-					if (Z(i, j, k) .ne. 0) then
-						call akEA(r, atoms(i, j, k, :), Z(i, j, k), ak)
-						a = a + ak
-					end if
-				end do
+	
+	! TO BE EDITED
+	! Subroutine which computes a time step of the Velocity Verlet algorithm
+	! used to compute the trajectory of a projectile electron interacting with N_e
+	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
+	! bulk of N_a=(2*Nx + 1)*(Ny + 1)*(2*Nz + 1) neutral atoms with atomic number Z.
+	! The position of the embedded electrons is stored in the array e_emb(N_et,3).
+	! Acceleration due to embedded electrons is computed for EVERY embedded electron
+	! and ONLY if there is AT LEAST one embedded electron.
+	! Acceleration due to neutral atoms is ONLY computed if near the material zone, 
+	! i.e. its height is less than half the interatomic distance and lower.
+	! This subroutine only computes the acceleration due to nearby neutral atoms,
+	! in comparison with the original vv_step, which computed the acceleration from
+	! all neutral atoms in the bulk. This is a good approximation and significantly 
+	! speeds up the simulation.
+	! This subroutine is used to compute the steps when near the material zone,
+	! which is why it is called Near Field (NF).
+	subroutine time_step_near_zone &
+		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
+		atom_charges, dt, r, v, a)
+		implicit none
+		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
+		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
+		integer, intent(in) :: , atom_charges(:,:,:)
+		real(dp), intent(in) :: dt
+		real(dp), intent(inout) :: r(3), v(3), a(3)
+		real(dp) :: rt(3), ak(3)
+		integer :: Z
+		integer(i8) :: atom_indices(3)
+		integer(i8) :: i, j, k
+		! Half-step velocity update
+		v = v + 0.5*a*dt
+		! Position update
+		r = r + v*dt
+		! Full-step acceleration update
+		a = 0
+		! Acceleration due to embedded electrons
+		! ONLY computed if there is AT LEAST one embedded electron
+		if (num_embedded .gt. 0) then
+			do k = 1, num_embedded
+				rt = embedded_positions(k,:)
+				call acceleration_due_to_electron(r, rt, ak)
+				a = a + ak
 			end do
-		end do
-	end if
-	v = v + 0.5*a*dt
-end subroutine vv_step_NF
-
-!Velocity Verlet Step for Far Field (bulk electrons)
-!Subroutine which computes a time step of the Velocity Verlet algorithm used to
-!compute the trajectory of a projectile electron interacting with Nb equivalent
-!embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
-subroutine vv_step_FF(Nb,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,Nx,Ny,Nz,atoms,Z,d,dt,r,v,a)
-integer(i8), intent(in) :: Nb !Number of embedded electrons
-integer(i8), intent(in) :: Nxb, Nyb, Nzb !Bins boundary indices
-integer(i8), intent(in) :: max_eq		!Maximum equivalent charge, 180 from tests (max 182)
-integer(i8), intent(in) :: max_neq	!Maximum number of equivalent electrons per bin, N_beam/max_eq+1
-integer(i8), intent(in) :: b_neq(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb)!Current equivalent electron array
-integer(i8), intent(in) :: b_ec(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq)!Equivalent charges array
-real(dp), intent(in) :: b_er(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq,3)!Equivalent positions array
-integer(i8), intent(in) :: Nx, Ny, Nz
-real(dp), intent(in):: atoms(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1,3)
-integer, intent(in) :: Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1)
-real(dp), intent(in) :: d, dt
-real(dp), intent(inout) :: r(3), v(3), a(3)
-real(dp) :: ak(3)
-integer(i8) :: i, j, k
-integer(i8) :: im, jm, km
-integer(i8) :: neq, ec
-real(dp) :: er(3)
-real(dp) :: material_height
-	!Velocity Verlet step
-	!It is not necessary to compute the time t = t0 + i*dt
-	r = r + v*dt + 0.5*a*dt*dt
-	v = v + 0.5*a*dt
-	!Computing acceleration after time step
-	a = 0
-	!Acceleration due to embedded electrons,
-	!ONLY computed if there is AT LEAST one embedded electron
-	if (Nb .gt. 0) then
-		do i = -Nxb, Nxb
-			if (i .ne. 0) then	!To avoid checking for unused bins with index 0 
-				do j = -1,-Nyb, -1
-					do k = -Nzb, Nzb
-						if (b_neq(i,j,k) .gt. 0) then
-							do neq = 1, b_neq(i,j,k)
-								ec = b_ec(i,j,k,neq)
-								er = b_er(i,j,k,neq,:)
-								call akEE_FF(ec, r, er, ak)
-								a = a + ak
-							end do
+		end if
+		! Acceleration due to material atoms
+		! ONLY computed if near the material zone, i.e. if the electron 
+		! projectile position y-coordinate is less than the material's height
+		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
+			call get_nearby_atom_indices(r, material_boundaries, atom_indices)
+			do i = atom_indices(1) - 1, atom_indices(1) + 1
+				do j = atom_indices(2) - 1, atom_indices(2) + 1
+					do k = atom_indices(3) - 1, atom_indices(3) + 1
+						!Only compute acceleration in positions with atoms
+						Z = atom_charges(i,j,k)
+						if (Z .ne. 0) then
+							rt = atom_positions(i,j,k,:)
+							call acceleration_due_to_atom(r, rt, Z, ak)
+							a = a + ak
 						end if
 					end do
 				end do
-			end if
-		end do
-	end if
-	!Acceleration due to neutral atoms
-	!ONLY computed if near the material zone, i.e. 
-	material_height = atoms(0,0,0,2) + 0.5*d
-	if (r(2) .lt. material_height) then
-	call sort_in_material(r,d,Nx,Ny,Nz,im,jm,km)
-		do i = im-1, im+1 
-			do j = jm-1, jm+1
-				do k = km-1, km+1
-					!Only compute acceleration from positions with atoms
-					if (Z(i, j, k) .ne. 0) then
-						call akEA(r, atoms(i, j, k, :), Z(i, j, k), ak)
-						a = a + ak
-					end if
+			end do
+		end if
+		! Second half-step velocity update
+		v = v + 0.5*a*dt
+	end subroutine time_step_near_zone
+
+	! TO BE EDITED
+	! Velocity Verlet Step for Far Field (bulk electrons)
+	! Subroutine which computes a time step of the Velocity Verlet algorithm used to
+	! compute the trajectory of a projectile electron interacting with Nb equivalent
+	! embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
+	subroutine time_step_far_zone &
+		(num_embedded, cells_boundaries, num_super_electrons, &
+		super_electron_charges, super_electron_positions, material_boundaries, &
+		atom_positions, atom_charges, dt, r, v, a)
+		implicit none
+		integer(i8), intent(in) :: num_embedded, num_super_electrons(:,:,:)
+		integer(i8), intent(in) :: cells_boundaries(3), material_boundaries(3)
+		integer, intent(in) :: super_electron_charges(:,:,:,:), atom_charges(:,:,:)
+		real(dp), intent(in) :: super_electron_positions(:,:,:,:,:)
+		real(dp), intent(in) :: atom_positions(:,:,:,:)
+		real(dp), intent(in) :: dt
+		real(dp), intent(inout) :: r(3), v(3), a(3)
+		real(dp) :: rt(3), ak(3)
+		integer :: Q, Z
+		integer(i8) :: NCx, NCy, NCz, super_electron_num
+		integer(i8) :: i, j, k, n
+		! Half-step velocity update
+		v = v + 0.5*a*dt
+		! Position update
+		r = r + v*dt
+		! Full-step acceleration update
+		a = 0
+		! Getting partition cells boundaries
+		NCx = cells_boundaries(1)
+		NCy = cells_boundaries(2)
+		NCz = cells_boundaries(3)
+		! Acceleration due to embedded super electrons
+		! ONLY computed if there is AT LEAST one embedded electron
+		if (num_embedded .gt. 0) then
+			do i = -NCx, NCx
+				! To avoid checking for unused cells with index 0
+				if (i .ne. 0) then
+					do j = -1,-NCy, -1
+						do k = -NCz, NCz
+							! Getting number of super electrons in the cell
+							super_electron_num = num_super_electrons(i,j,k)
+							! This also avoids unused cells, their super_electron_num is 0
+							if (super_electron_num .gt. 0) then
+								do n = 1, super_electron_num
+									Q = super_electron_charges(i,j,k,n)
+									rt = super_electron_positions(i,j,k,n,:)
+									call acceleration_due_to_super_electron(r, rt, Q, ak)
+									a = a + ak
+								end do
+							end if
+						end do
+					end do
+				end if
+			end do
+		end if
+		! IT DOESN'T LOOK LIKE THIS NEXT PART IS NECESSARY, MUST TEST!!!!
+		! Acceleration due to material atoms
+		! ONLY computed if near the material zone, i.e. if the electron 
+		! projectile position y-coordinate is less than the material's height
+		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
+			call get_nearby_atom_indices(r, material_boundaries, atom_indices)
+			do i = atom_indices(1) - 1, atom_indices(1) + 1
+				do j = atom_indices(2) - 1, atom_indices(2) + 1
+					do k = atom_indices(3) - 1, atom_indices(3) + 1
+						!Only compute acceleration in positions with atoms
+						Z = atom_charges(i,j,k)
+						if (Z .ne. 0) then
+							rt = atom_positions(i,j,k,:)
+							call acceleration_due_to_atom(r, rt, Z, ak)
+							a = a + ak
+						end if
+					end do
 				end do
 			end do
-		end do
-	end if
-	v = v + 0.5*a*dt
-end subroutine vv_step_FF
+		end if
+		! Second half-step velocity update
+		v = v + 0.5*a*dt
+	end subroutine time_step_far_zone
 
 !Subroutine which computes the trajectory of the i-th projectile electron, out
 !of N electrons in the electron beam, and plots P points in unit file number ou.
