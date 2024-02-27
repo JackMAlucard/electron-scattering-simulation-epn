@@ -175,11 +175,13 @@ module m4_optimized_trajectory_computation
 		else
 			!Everything else is an error (TB REMOVED)
 			print*, "ERROR"
-			print*, "Cell indices:", i,j,k
-			print*, "Super electron number:", super_electron_num
-			print*, "Super electron charge:", super_electron_charge
-			print*, "Super electron position:", super_electron_r
 		end if
+		! Printing updated super electron info
+		print*, "Super electron arrays updated!"
+		print*, " Cell indices:", i,j,k
+		print*, " New super electron number:", super_electron_num
+		print*, " New super electron charge:", super_electron_charge
+		print*, " New super electron position:", super_electron_r
 	end subroutine update_super_electron_in_cell
 
 	! Acceleration of a projectile electron interacting with an embedded 
@@ -321,30 +323,11 @@ module m4_optimized_trajectory_computation
 				end if
 			end do
 		end if
-		! IT DOESN'T LOOK LIKE THIS NEXT PART IS NECESSARY, MUST TEST!!!!
-		! Acceleration due to material atoms
-		! ONLY computed if near the material zone, i.e. if the electron 
-		! projectile position y-coordinate is less than the material's height
-		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			call get_nearby_atom_indices(r, material_boundaries, atom_indices)
-			do i = atom_indices(1) - 1, atom_indices(1) + 1
-				do j = atom_indices(2) - 1, atom_indices(2) + 1
-					do k = atom_indices(3) - 1, atom_indices(3) + 1
-						!Only compute acceleration in positions with atoms
-						Z = atom_charges(i,j,k)
-						if (Z .ne. 0) then
-							rt = atom_positions(i,j,k,:)
-							call acceleration_due_to_atom(r, rt, Z, ak)
-							a = a + ak
-						end if
-					end do
-				end do
-			end do
-		end if
 		! Second half-step velocity update
 		v = v + 0.5*a*dt
 	end subroutine time_step_far_zone
 
+! TO BE EDITED, AND OMG, WHAT A CHORE IT LOOKS LIKE IT WILL BE
 !Subroutine which computes the trajectory of the i-th projectile electron, out
 !of N electrons in the electron beam, and plots P points in unit file number ou.
 !This subroutine uses the Mixed Method, i.e. it computes the acceleration due to
@@ -368,137 +351,141 @@ module m4_optimized_trajectory_computation
 !The information for the Mix Method simulation is stored in the additional 
 !arrays that have been previously defined in the add_electron_to_bin
 !subroutine.
-subroutine trajectory_opt(i,N,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,atoms,Z,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,d0,FFed,T,d,dt,l,r,v,a)
-!REGULAR TRAJECTORY VARIABLES
-integer(i8), intent(in) :: i, N, P, ou, Nx, Ny, Nz, T
-integer, intent(in) :: Z(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1)
-real(dp), intent(in) :: atoms(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1,3)
-real(dp), intent(in) :: d0, d, dt, l
-!MIXED METHOD VARIABLES, WHICH USE VV_STEP_FF
-integer(i8), intent(in) :: Nxb, Nyb, Nzb !Bins boundary indices
-integer(i8), intent(in) :: max_eq		!Maximum equivalent charge, 180 from tests (max 182)
-integer(i8), intent(in) :: max_neq	!Maximum number of equivalent electrons per bin, N_beam/max_eq+1
-integer(i8), intent(inout) :: b_neq(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb)!Current equivalent electron array
-integer(i8), intent(inout) :: b_ec(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq)!Equivalent charges array
-real(dp), intent(inout) :: b_er(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq,3)!Equivalent positions array
-real(dp), intent(in) :: FFed	!Far Field effective distance
-integer(i8), intent(inout) :: Ne, Ns
-real(dp), intent(inout) :: emb(N,3), sct(N,3)
-real(dp), intent(inout) :: r(N,3), v(N,3), a(N,3)
-real(dp) :: dk
-integer(i8) :: j, k
-!Internal variables for equivalent electron bin sorting
-integer(i8) :: ib,jb,kb
-integer :: bin_size
-real(dp) :: d_bin, d_bin_inv
-logical :: end_embedded, end_scattered, end_iterations	!Trajectory end conditions
-logical :: in_material
-real(dp) :: r_mat_i(3), r_mat_f(3), dr_mat(3), d_mat, d_embedded
-real(dp) :: tk
-	!Setting bin size (distance) and computing its inverse for sort_electron
-	!subroutine (THIS SHOULD GO ON MAIN)
-	bin_size = 3	!MUST CHECK IF IT IS THE SAME VALUE IN main
-	d_bin = bin_size*d
-	d_bin_inv = 1/d_bin
-	!Initialize end conditions as false
-	end_embedded = .false.
-	end_scattered = .false.
-	end_iterations = .false.
-	!Initialize variables related to end conditions
-	k = 0
-	dk = d0
-	in_material = .false.
-	r_mat_f = 0
-	d_mat = 0
-	!Initialize points to be plotted counter
-	j = 0
-	do while ( .not.(end_embedded .or. end_scattered .or. end_iterations) )
-		tk = k*dt !t0 = 0, just to print to file, not needed for computations
-		!Plotting only P points
-		if ( (mod(k,T/P) .eq. 0) .and. j .lt. P ) then
-			!Write values to file
-			write(ou,*) tk, r(i,:)	!I'LL HAVE TO READ FROM FILE TO COMPARE ON TEST!
-			j = j + 1
-		end if
-		!Computing next Velocity Verlet step
-		!Check if the electron distance to center is greater than the far field effective distance ffed (a0)
-		if (dk .gt. FFed .and. r(i,2) .gt. 0._dp) then
-			!Computing next Velocity Verlet step using Far Field Approximation
-			call vv_step_FF(Ne,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,Nx,Ny,Nz,atoms,Z,d,dt,r(i,:), v(i,:), a(i,:))
-		else
-			!Computing next Velocity Verlet step for Near Field
-			call vv_step(Ne, N, emb, Nx, Ny, Nz, atoms, Z, d, dt, r(i,:), v(i,:), a(i,:))
-		end if
-		!Updating variables related to end conditions for distance and iterations
-		dk = norm2(r(i,:))
-		k = k + 1
-		!Check if any of the end conditions are met
-		!End condition for embedded electrons
-		!The electron must be below material level
-		if (r(i,2) .lt. 0._dp) then
-			!Updating variables related to random embedding due to attenuation
-			r_mat_i = r_mat_f
-			r_mat_f = r(i,:)
-			dr_mat = r_mat_f - r_mat_i
-			d_mat = d_mat + norm2(dr_mat)
-			!ONLY the first time it enters the material
-			!Generate random number following exponential distribution
-			!Save first electron position inside material
-			!Initialize first electron distance travelled inside material
-			!This overwrites the update in variables related to random embedding  
-			if (.not.(in_material)) then
-				in_material = .true.
-				call random_exponential(d_embedded,l)
-				r_mat_i = r(i,:)
-				d_mat = 0
+	subroutine compute_trajectory_optimized &
+		(num_plot_ploints, max_iterations, output_unit, &
+		material_boundaries, atom_positions, atom_charges, cells_boundaries, &
+		num_super_electrons, super_electron_positions, super_electron_charges, &
+		initial_distance_to_target, dt, r, v, a &
+		num_embedded, num_scattered, embedded_positions, scattered_positions)
+		!Updated: P,T,ou, Nx,Ny,Nz,atoms,Z, d0, dt,r,v,a, Ne,Ns, emb,sct
+		!					Nxb,Nyb,Nzb, b_neq,b_ec,b_er
+		!Discarded: i,N, max_eq,max_neq, FFed, d, l
+		implicit none
+		integer(i8), intent(in) :: num_plot_ploints, max_iterations, output_unit
+		integer(i8), intent(in) :: material_boundaries(3), cells_boundaries(3)
+		real(dp), intent(in) :: atom_positions(:,:,:,)
+		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: initial_distance_to_target, dt
+		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
+		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
+		integer, intent(inout) :: super_electron_charges(:,:,:,:)
+		real(dp), intent(inout) :: r(3), v(3), a(3)
+		integer(i8), intent(inout) :: num_embedded, num_scattered
+		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
+		logical :: is_embedded, is_scattered, is_max_iteration
+		logical :: in_material
+		real(dp) :: distance_before_collision, distance_in_material
+		real(dp) :: previous_position(3), actual_position(3), step_length!dk
+		real(dp) :: distance_to_target, t!tk
+		integer(i8) :: Nx, Ny, Nz
+		integer(i8) :: i, j!j, k
+		! Initializing end conditions as false
+		is_embedded = .false.
+		is_scattered = .false.
+		is_max_iteration = .false.
+		! Initializing variables related to end conditions
+		i = 0
+		in_material = .false.
+		distance_to_target = initial_distance_to_target
+		! Initialize points to be plotted counter
+		j = 0
+		do while (.not.(is_embedded .or. is_scattered .or. is_iterations))
+			t = i*dt ! t0 = 0, just to print to file, not needed for computations
+			! Plotting only P points
+			if ((mod(k,max_iterations/num_plot_ploints) .eq. 0) .and. &
+			j .lt. num_plot_ploints) then
+				! Write values to file
+				write(output_unit,*) t, r
+				j = j + 1
 			end if
-			!Did the electron got embedded due to attenuation?
-			if (d_mat .ge. d_embedded) then
-				end_embedded = .true.
-				print*, "End condition for embedded electron due to attenuation is met"
-				Ne = Ne + 1
-				emb(Ne,:) = r(i,:)
-				!Update equivalent electron bins
-				!Sort embedded electron into their respective equivalent electron bin
-				call sort_electron(emb(Ne,:),d_bin_inv,Nxb,Nyb,Nzb,ib,jb,kb)
-				!Add embedded electron into each respective bin
-				call add_electron_to_bin(ib,jb,kb,emb(Ne,:),Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er)
-				!Print embedded electron info message to console
-				print*, "Final electron position:", r(i,:)
-				print*, "Attenuation distance (random exp):", d_embedded
-				print*, "Distance travelled inside material:", d_mat
-				print*, "x_scc: +/-", atoms(Nx,0,0,1)
-				print*, "y_scc:", atoms(0,-Ny,0,2)
-				print*, "z_scc: +/-", atoms(0,0,Nz,3)
-				print*, "k", k
-				!Print equivalent electron info message to console
-				print*, "Equivalent electron info:"
-				print*, "i,j,k:", ib,jb,kb
-				print*, "neq:", b_neq(ib,jb,kb)
-				print*, "ec:", b_ec(ib,jb,kb,b_neq(ib,jb,kb))
-				print*, "er:", b_er(ib,jb,kb,b_neq(ib,jb,kb),:)
+			! Computing next Velocity Verlet time step integration depending on the
+			! projectile electron distance to target material center in relation to 
+			! the EFFECTIVE_DISTANCE and whether or not it's in the material
+			if (distance_to_target .gt. EFFECTIVE_DISTANCE and .not. in_material) then
+				! Computing next Velocity Verlet time step integration using far zone
+				! approximation
+				call time_step_far_zone &
+				(num_embedded, cells_boundaries, num_super_electrons, &
+				super_electron_charges, super_electron_positions, &
+				material_boundaries, atom_positions, atom_charges, dt, r, v, a)
+			else
+				! Computing next Velocity Verlet time step integration using near zone
+				! approximation
+				call time_step_near_zone &
+				(num_embedded, material_boundaries, embedded_positions, &
+				atom_positions, atom_charges, dt, r, v, a)
+			end if
+			! Updating variables related to end conditions for distance and iterations
+			distance_to_target = norm2(r)
+			i = i + 1
+			! Check if any of the end conditions are met
+			! End condition for embedded electrons
+			! The electron must be below material level
+			if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
+				! ONLY the first time it enters the material
+				! Generate random number following exponential distribution
+				! Initialize actual electron position (inside material)
+				! Initialize electron distance travelled inside material
+				if (.not.(in_material)) then
+					in_material = .true.
+					call random_exponential(CROSS_SECTION_SIO2, distance_before_collision)
+					actual_position = r
+					distance_in_material = 0
+				end if
+				! Updating variables related to end condition for embedding due to 
+				! random atomic electron collision 
+				previous_position = actual_position
+				actual_position = r
+				step_length = norm2(actual_position - previous_position)
+				distance_in_material = distance_in_material + step_length
+				! Did the electron got embedded due to collision with atomic electron?
+				if (distance_in_material .ge. distance_before_collision) then
+					is_embedded = .true.
+					num_embedded = num_embedded + 1
+					embedded_positions(num_embedded,:) = r
+					! Update super electron arrays based on new embedded electron
+					call update_super_electron_in_cell &
+					(r, cells_boundaries, num_super_electrons, super_electron_charges, &
+					super_electron_positions)
+					print*, "Trajectory end --> Electron is embedded"
+					print*, "Total iterations:", i
+					print*, "Final electron position:", r
+					print*, " Distance before collision:", distance_before_collision
+					print*, " Distance travelled inside material:", distance_in_material
+					print*, " Material boundaries:"
+					Nx = material_boundaries(1)
+					Ny = material_boundaries(2)
+					Nz = material_boundaries(3)
+					print*, "  x --> +/-", atom_positions(Nx,0,0,1)
+					print*, "  y -->    ", atom_positions(0,-Ny,0,2)
+					print*, "  z --> +/-", atom_positions(0,0,Nz,3)
+					print*, " Cell with new super electron:", 
+					print*
+				end if
+			end if
+			! End condition for total distance travelled
+			if (distance_to_target .gt. initial_distance_to_target .and. &
+			r(2) .gt. 0) then
+				is_scattered = .true.
+				num_scattered = num_scattered + 1
+				scattered_positions(num_scattered,:) = r
+				print*, "Trajectory end --> Electron is scattered"
+				print*, "Total iterations:", i
+				print*, "Final electron position:", r
+				print*, " Initial distance to target:", initial_distance_to_target
+				print*, " Final distance to target:", distance_to_target
 				print*
 			end if
-		end if
-		!End condition for distance
-		if (dk .gt. d0 .and. r(i,2) .gt. 0._dp) then
-			end_scattered = .true.
-			Ns = Ns + 1
-			sct(Ns,:) = r(i,:)
-			print*, "End condition for scattered electron is met"
-			print*, "d0:", d0
-			print*, "dk:", dk
-			print*, "k", k
-		end if
-		!End condition for iterations
-		if (k .ge. T) then
-			end_iterations = .true.
-			print*, "End condition for iterations is met"
-			print*, "Final electron position:", r(i,:)
-			print*, "T:", T
-			print*, "k", k
-		end if
-	end do
-end subroutine trajectory_opt
+			! End condition for maximum number of iterations
+			if (i .ge. max_iterations) then
+				is_max_iteration = .true.
+				print*, "Trajectory end --> Maximum number of iterations reached"
+				print*, "Total iterations:", i
+				print*, "Final electron position:", r
+				print*, " Maximum number of iterations:", max_iterations
+				print*
+			end if
+		end do
+	end subroutine compute_trajectory_optimized
 
 end module m4_optimized_trajectory_computation
