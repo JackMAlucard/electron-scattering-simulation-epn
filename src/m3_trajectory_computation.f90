@@ -140,9 +140,9 @@ module m3_trajectory_computation
 	! which point the number of embedded electrons N_e is updated/increased.
 	! I NEED to explain WHY these conditions for the end of the trajectory are set.
 	subroutine compute_trajectory &
-		num_plot_ploints, max_iterations, output_unit, 
-		material_boundaries, atom_positions, atom_charges, 
-		initial_distance_to_target, dt, r, v, a
+		(num_plot_ploints, max_iterations, output_unit, &
+		material_boundaries, atom_positions, atom_charges, &
+		initial_distance_to_target, dt, r, v, a &
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
