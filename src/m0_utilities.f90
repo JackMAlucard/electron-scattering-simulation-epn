@@ -100,35 +100,35 @@ module m0_utilities
 		implicit none
 		real(dp), intent(in) :: lambda
 		real(dp), intent(out) :: x
-		real(dp) :: r
+		real(dp) :: u
 		call random_std_uniform(u)
 		x = -dlog(u)/lambda
 	end subroutine random_exponential
 
 	!VECTOR TRANSFORMATIONS SUBROUTINES*******************************************
-	subroutine vector_translation(traslation_vector, vector)
+	subroutine vector_translation(translation_vector, vector)
 		implicit none
 		real(dp), intent(in) :: translation_vector(3)
-		real(dp), intent(inout) :: vector
+		real(dp), intent(inout) :: vector(3)
 		vector = vector + translation_vector
 	end subroutine vector_translation
 	
 !	subroutine matrix_vector_product(M, V)
 	subroutine rotation_about_x_axis(theta, vector)
 		implicit none
-		real(dp), intent(in) :: angle
+		real(dp), intent(in) :: theta
 		real(dp), intent(inout) :: vector(3)
-		real(dp) :: Rx(3,3), aux_vector(3)
+		real(dp) :: rotation_matrix(3,3), rotated_vector(3)
 		integer :: i
 		!Rotation matrix
-		Rx(1,:) = (/1._dp, 0._dp, 0._dp/)
-		Rx(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
-		Rx(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
-		aux_vector = 0
+		rotation_matrix(1,:) = (/1._dp, 0._dp, 0._dp/)
+		rotation_matrix(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
+		rotation_matrix(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
+		rotated_vector = 0
 		do i = 1, 3
-			aux_vector(:) = aux_vector(:) + Rx(:,i)*vector(i)
+			rotated_vector(:) = rotated_vector(:) + rotation_matrix(:,i)*vector(i)
 		end do
-		vector = aux_vector
+		vector = rotated_vector
 	end subroutine rotation_about_x_axis
 
 end module m0_utilities
