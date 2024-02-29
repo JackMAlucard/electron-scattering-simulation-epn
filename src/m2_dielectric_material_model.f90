@@ -1,18 +1,8 @@
 module m2_dielectric_material_model
+	use m0_utilities, &
+	only: dp, i8, INTERATOMIC_DIST_SIO2
 	implicit none
-	use m0!, only ...
 	contains
-
-	! Subroutine that computes integer grid boundaries from rectangular cuboid
-	! region of space dimensions
-	! subroutine length_to_integer_boundaries(length_boundaries, integer_boundaries)
-	! ...
-
-	! Information to be printed from this subroutine
-	!	print*, "Nx", Nx, "Ny", Ny, "Nz", Nz
-	!	print*, "Lx", Nx*d, "Ly", Ny*d, "Lz", Nz*d
-	!	N = (2*Nx + 1)*(Ny + 1)*(2*Nz + 1)
-	!	print*, "Total atom spaces:", N
 
 	! Subroutine that sets up a simple model for SiO2
 	! This subroutine takes as input three integers stored in the 
@@ -84,6 +74,6 @@ module m2_dielectric_material_model
 				end do
 			end do
 		end do
-	end subroutine simple_silica_model
+	end subroutine setup_simple_silica_model
 
 end module m2_dielectric_material_model
