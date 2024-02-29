@@ -1,7 +1,11 @@
 module m4_optimized_trajectory_computation
+	use m0_utilities, &
+	only: dp, i8, INTERATOMIC_DIST_SIO2_INV, CELL_SCALE_FACTOR, &
+	MAX_EQUIVALENT_CHARGE, CELL_LENGTH_INV, MATERIAL_HEIGHT_SIO2, &
+	CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE
+	use m3_trajectory_computation, &
+	only: acceleration_due_to_electron, acceleration_due_to_atom
 	implicit none
-	use m0
-	use m3!Specify which subroutines?
 	contains
 
 	! Subroutine that takes the position of a projectile electron in 
@@ -9,7 +13,7 @@ module m4_optimized_trajectory_computation
 	subroutine get_nearby_atom_indices(r, material_boundaries, atom_indices)
 		implicit none
 		real(dp), intent(in) :: r(3)	! Projectile electron position
-		integer(i8), intent(in) :: material_boundaries
+		integer(i8), intent(in) :: material_boundaries(3)
 		integer(i8), intent(out) :: atom_indices(3)
 		integer(i8) :: Nx, Ny, Nz, i, j, k
 		! Getting material grid boundaries
@@ -49,9 +53,9 @@ module m4_optimized_trajectory_computation
 		implicit none
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
 		integer(i8), intent(out) :: cells_boundaries(3)
-		integer(i8), intent(out) :: num_super_electrons_in_cell(:,:,:)
-		integer(i8), intent(out) :: super_electron_charges(:,:,:,:)
-		real(dp), intent(out) :: super_electron_positions(:,:,:,:,:)
+		integer(i8), allocatable, intent(out) :: num_super_electrons_in_cell(:,:,:)
+		integer(i8), allocatable, intent(out) :: super_electron_charges(:,:,:,:)
+		real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
 		integer(i8) :: NCx, NCy, NCz
 		integer :: max_super_electrons
 		! Computing partition cells boundaries
@@ -134,28 +138,27 @@ module m4_optimized_trajectory_computation
 		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
 		integer, intent(inout) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
-		integer(i8) :: cell_indices(3), i, j, k
-		integer(i8) :: super_electron_num
+		integer(i8) :: cell_indices(3), i, j, k, n
 		integer :: super_electron_charge
-		real(dp) :: super_electron_r
+		real(dp) :: super_electron_r(3)
 		! Getting embedded electron's cell based on its position r
 		call get_cell_indices(r, cells_boundaries, cell_indices)
 		i = cell_indices(1)
 		j = cell_indices(2)
 		k = cell_indices(3)		
 		! Getting number of super electrons in the cell
-		super_electron_num = num_super_electrons(i,j,k)
+		n = num_super_electrons(i,j,k)
 		! Getting current super electron charge
 		super_electron_charge = super_electron_charges(i,j,k,n)
 		! Getting current super electron position
 		super_electron_r = super_electron_positions(i,j,k,n,:)
 		! If there are no embedded electrons in the cell, yet,
 		! i.e. no super electrons yet in the cell
-		if (super_electron_num .eq. 0) then
+		if (n .eq. 0) then
 			! Updating super electrons arrays initializing the first one 
 			num_super_electrons(i,j,k) = 1
-			super_electron_charges(i,j,k,super_electron_num) = 1
-			super_electron_positions(i,j,k,super_electron_num,:) = r
+			super_electron_charges(i,j,k,n) = 1
+			super_electron_positions(i,j,k,n,:) = r
 		! If current super electron is not full of charge, add extra charge
 		! and compute new super electron position
 		else if (super_electron_charge .lt. MAX_EQUIVALENT_CHARGE) then
@@ -163,15 +166,15 @@ module m4_optimized_trajectory_computation
 			super_electron_r = &
 			super_electron_r + (r - super_electron_r)/super_electron_charge
 			! Updating super electron arrays after adding a new embedded electron
-			super_electron_charges(i,j,k,super_electron_num) = super_electron_charge
-			super_electron_positions(i,j,k,super_electron_num,:) = super_electron_r
+			super_electron_charges(i,j,k,n) = super_electron_charge
+			super_electron_positions(i,j,k,n,:) = super_electron_r
 		! If current super electron is full of charge, initialize next one
 		else if (super_electron_charge .eq. MAX_EQUIVALENT_CHARGE) then
-			super_electron_num = super_electron_num + 1
+			n = n + 1
 			! Updating super electrons arrays initializing the next one
-			num_super_electrons(i,j,k) = super_electron_num
-			super_electron_charges(i,j,k,super_electron_num) = 1
-			super_electron_positions(i,j,k,super_electron_num,:) = r
+			num_super_electrons(i,j,k) = n
+			super_electron_charges(i,j,k,n) = 1
+			super_electron_positions(i,j,k,n,:) = r
 		else
 			!Everything else is an error (TB REMOVED)
 			print*, "ERROR"
@@ -179,7 +182,7 @@ module m4_optimized_trajectory_computation
 		! Printing updated super electron info
 		print*, "Super electron arrays updated!"
 		print*, " Cell indices:", i,j,k
-		print*, " New super electron number:", super_electron_num
+		print*, " New super electron number:", n
 		print*, " New super electron charge:", super_electron_charge
 		print*, " New super electron position:", super_electron_r
 	end subroutine update_super_electron_in_cell
@@ -219,14 +222,14 @@ module m4_optimized_trajectory_computation
 	! which is why it is called Near Field (NF).
 	subroutine time_step_near_zone &
 		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
-		atom_charges, dt, r, v, a)
+		atom_charges, atom_charges_cbrt, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
 		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
-		integer, intent(in) :: , atom_charges(:,:,:)
-		real(dp), intent(in) :: dt
+		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: atom_charges_cbrt(:,:,:), dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
-		real(dp) :: rt(3), ak(3)
+		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
 		integer(i8) :: atom_indices(3)
 		integer(i8) :: i, j, k
@@ -255,9 +258,10 @@ module m4_optimized_trajectory_computation
 					do k = atom_indices(3) - 1, atom_indices(3) + 1
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
+						cbrt_Z = atom_charges_cbrt(i,j,k)
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
-							call acceleration_due_to_atom(r, rt, Z, ak)
+							call acceleration_due_to_atom(r, rt, Z, cbrt_Z, ak)
 							a = a + ak
 						end if
 					end do
@@ -275,18 +279,16 @@ module m4_optimized_trajectory_computation
 	! embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
 	subroutine time_step_far_zone &
 		(num_embedded, cells_boundaries, num_super_electrons, &
-		super_electron_charges, super_electron_positions, material_boundaries, &
-		atom_positions, atom_charges, dt, r, v, a)
+		super_electron_charges, super_electron_positions, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, num_super_electrons(:,:,:)
-		integer(i8), intent(in) :: cells_boundaries(3), material_boundaries(3)
-		integer, intent(in) :: super_electron_charges(:,:,:,:), atom_charges(:,:,:)
+		integer(i8), intent(in) :: cells_boundaries(3)
+		integer, intent(in) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(in) :: super_electron_positions(:,:,:,:,:)
-		real(dp), intent(in) :: atom_positions(:,:,:,:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3)
-		integer :: Q, Z
+		integer :: Q
 		integer(i8) :: NCx, NCy, NCz, super_electron_num
 		integer(i8) :: i, j, k, n
 		! Half-step velocity update
@@ -353,17 +355,14 @@ module m4_optimized_trajectory_computation
 !subroutine.
 	subroutine compute_trajectory_optimized &
 		(num_plot_ploints, max_iterations, output_unit, &
-		material_boundaries, atom_positions, atom_charges, cells_boundaries, &
-		num_super_electrons, super_electron_positions, super_electron_charges, &
-		initial_distance_to_target, dt, r, v, a &
+		material_boundaries, atom_positions, atom_charges, atom_charges_cbrt, &
+		cells_boundaries, num_super_electrons, super_electron_positions, &
+		super_electron_charges, initial_distance_to_target, dt, r, v, a, &
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
-		!Updated: P,T,ou, Nx,Ny,Nz,atoms,Z, d0, dt,r,v,a, Ne,Ns, emb,sct
-		!					Nxb,Nyb,Nzb, b_neq,b_ec,b_er
-		!Discarded: i,N, max_eq,max_neq, FFed, d, l
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations, output_unit
 		integer(i8), intent(in) :: material_boundaries(3), cells_boundaries(3)
-		real(dp), intent(in) :: atom_positions(:,:,:,)
+		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
 		integer, intent(in) :: atom_charges(:,:,:)
 		real(dp), intent(in) :: initial_distance_to_target, dt
 		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
@@ -375,10 +374,10 @@ module m4_optimized_trajectory_computation
 		logical :: is_embedded, is_scattered, is_max_iteration
 		logical :: in_material
 		real(dp) :: distance_before_collision, distance_in_material
-		real(dp) :: previous_position(3), actual_position(3), step_length!dk
-		real(dp) :: distance_to_target, t!tk
+		real(dp) :: previous_position(3), actual_position(3), step_length
+		real(dp) :: distance_to_target, t
 		integer(i8) :: Nx, Ny, Nz
-		integer(i8) :: i, j!j, k
+		integer(i8) :: i, j
 		! Initializing end conditions as false
 		is_embedded = .false.
 		is_scattered = .false.
@@ -389,10 +388,10 @@ module m4_optimized_trajectory_computation
 		distance_to_target = initial_distance_to_target
 		! Initialize points to be plotted counter
 		j = 0
-		do while (.not.(is_embedded .or. is_scattered .or. is_iterations))
+		do while (.not.(is_embedded .or. is_scattered .or. is_max_iteration))
 			t = i*dt ! t0 = 0, just to print to file, not needed for computations
 			! Plotting only P points
-			if ((mod(k,max_iterations/num_plot_ploints) .eq. 0) .and. &
+			if ((mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. &
 			j .lt. num_plot_ploints) then
 				! Write values to file
 				write(output_unit,*) t, r
@@ -401,19 +400,19 @@ module m4_optimized_trajectory_computation
 			! Computing next Velocity Verlet time step integration depending on the
 			! projectile electron distance to target material center in relation to 
 			! the EFFECTIVE_DISTANCE and whether or not it's in the material
-			if (distance_to_target .gt. EFFECTIVE_DISTANCE and .not. in_material) then
+			if (distance_to_target .gt. EFFECTIVE_DISTANCE .and. &
+			.not. in_material) then
 				! Computing next Velocity Verlet time step integration using far zone
 				! approximation
 				call time_step_far_zone &
 				(num_embedded, cells_boundaries, num_super_electrons, &
-				super_electron_charges, super_electron_positions, &
-				material_boundaries, atom_positions, atom_charges, dt, r, v, a)
+				super_electron_charges, super_electron_positions, dt, r, v, a)
 			else
 				! Computing next Velocity Verlet time step integration using near zone
 				! approximation
 				call time_step_near_zone &
 				(num_embedded, material_boundaries, embedded_positions, &
-				atom_positions, atom_charges, dt, r, v, a)
+				atom_positions, atom_charges, atom_charges_cbrt, dt, r, v, a)
 			end if
 			! Updating variables related to end conditions for distance and iterations
 			distance_to_target = norm2(r)
@@ -456,10 +455,9 @@ module m4_optimized_trajectory_computation
 					Nx = material_boundaries(1)
 					Ny = material_boundaries(2)
 					Nz = material_boundaries(3)
-					print*, "  x --> +/-", atom_positions(Nx,0,0,1)
-					print*, "  y -->    ", atom_positions(0,-Ny,0,2)
-					print*, "  z --> +/-", atom_positions(0,0,Nz,3)
-					print*, " Cell with new super electron:", 
+					print*, "  x --> +/-", atom_positions(Nx,-Ny,Nz,1)
+					print*, "  y -->    ", atom_positions(Nx,-Ny,Nz,2)
+					print*, "  z --> +/-", atom_positions(Nx,-Ny,Nz,3)
 					print*
 				end if
 			end if
