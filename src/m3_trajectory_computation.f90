@@ -30,8 +30,8 @@ module m3_trajectory_computation
 	! a: Acceleration of the incident electron (...)
 	subroutine acceleration_due_to_atom(rp, rt, Z, cbrt_Z, a)
 		implicit none
-		real(dp), intent(in) :: rp(3), rt(3)
-		integer, intent(in) :: Z, cbrt_Z
+		real(dp), intent(in) :: rp(3), rt(3), cbrt_Z
+		integer, intent(in) :: Z
 		real(dp), intent(out) :: a(3)
 		real(dp), parameter :: a_coef(3) = (/0.10_dp, 0.55_dp, 0.35_dp/)
 		real(dp), parameter :: b_coef(3) = (/6.00_dp, 1.20_dp, 0.30_dp/)
@@ -74,11 +74,12 @@ module m3_trajectory_computation
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
 		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:), atom_charges_cbrt(:,:,:)
+		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: atom_charges_cbrt(:,:,:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
-		real(dp) :: rt(3), ak(3)
-		integer :: Z, cbrt_Z
+		real(dp) :: rt(3), ak(3), cbrt_Z
+		integer :: Z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
 		! Half-step velocity update
@@ -149,8 +150,8 @@ module m3_trajectory_computation
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer(i8), intent(in) :: output_unit, material_boundaries(3)
-		real(dp), intent(in) :: atom_positions(:,:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:), atom_charges_cbrt(:,:,:)
+		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
+		integer, intent(in) :: atom_charges(:,:,:)
 		real(dp), intent(in) :: initial_distance_to_target, dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
