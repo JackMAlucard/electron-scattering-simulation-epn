@@ -1,6 +1,7 @@
 module m3_trajectory_computation
+	use m0_utilities, &
+	only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, random_exponential
 	implicit none
-	use m0!, only ...
 	contains
 
 	! Acceleration of a projectile Electron interacting with a stationary target 
@@ -51,7 +52,7 @@ module m3_trajectory_computation
 			aux = aux*b_coef(i)
 			psi = psi + aux
 		end do
-		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs ! CHECK THAT IT IS CORRECT
+		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs ! CHECK THAT THIS IS CORRECT
 	!	a = -Z*( (chi/(r**3)) + ((psi*b0_inv*cbrt_Z)/(r**2)) )*rs
 	end subroutine acceleration_due_to_atom
 	
@@ -69,15 +70,15 @@ module m3_trajectory_computation
 	! subroutine time_step(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
 	subroutine time_step &
 		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
-		atom_charges, dt, r, v, a)
+		atom_charges, atom_charges_cbrt, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
 		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
-		integer, intent(in) :: , atom_charges(:,:,:)
+		integer, intent(in) :: atom_charges(:,:,:), atom_charges_cbrt(:,:,:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3)
-		integer :: Z
+		integer :: Z, cbrt_Z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
 		! Half-step velocity update
@@ -108,9 +109,10 @@ module m3_trajectory_computation
 					do k = -Nz, Nz
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
+						cbrt_Z = atom_charges_cbrt(i,j,k)
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
-							call acceleration_due_to_atom(r, rt, Z, ak)
+							call acceleration_due_to_atom(r, rt, Z, cbrt_Z, ak)
 							a = a + ak
 						end if
 					end do
@@ -141,14 +143,14 @@ module m3_trajectory_computation
 	! I NEED to explain WHY these conditions for the end of the trajectory are set.
 	subroutine compute_trajectory &
 		(num_plot_ploints, max_iterations, output_unit, &
-		material_boundaries, atom_positions, atom_charges, &
-		initial_distance_to_target, dt, r, v, a &
+		material_boundaries, atom_positions, atom_charges, atom_charges_cbrt, &
+		initial_distance_to_target, dt, r, v, a, &
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer(i8), intent(in) :: output_unit, material_boundaries(3)
-		real(dp), intent(in) :: atom_positions(:,:,:,)
-		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: atom_positions(:,:,:,:)
+		integer, intent(in) :: atom_charges(:,:,:), atom_charges_cbrt(:,:,:)
 		real(dp), intent(in) :: initial_distance_to_target, dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
@@ -170,10 +172,10 @@ module m3_trajectory_computation
 		distance_to_target = initial_distance_to_target
 		! Initialize points to be plotted counter
 		j = 0
-		do while (.not.(is_embedded .or. is_scattered .or. is_iterations))
+		do while (.not.(is_embedded .or. is_scattered .or. is_max_iteration))
 			t = i*dt ! t0 = 0, just to print to file, not needed for computations
 			! Plotting only P points
-			if ((mod(k,max_iterations/num_plot_ploints) .eq. 0) .and. &
+			if ((mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. &
 			j .lt. num_plot_ploints) then
 				! Write values to file
 				write(output_unit,*) t, r
@@ -182,7 +184,7 @@ module m3_trajectory_computation
 			! Computing next Velocity Verlet time step integration
 			call time_step &
 			(num_embedded, material_boundaries, embedded_positions, &
-			atom_positions, atom_charges, dt, r, v, a)
+			atom_positions, atom_charges, atom_charges_cbrt, dt, r, v, a)
 			! Updating variables related to end conditions for distance and iterations
 			distance_to_target = norm2(r)
 			i = i + 1
@@ -220,9 +222,9 @@ module m3_trajectory_computation
 					Nx = material_boundaries(1)
 					Ny = material_boundaries(2)
 					Nz = material_boundaries(3)
-					print*, "  x --> +/-", atom_positions(Nx,0,0,1)
-					print*, "  y -->    ", atom_positions(0,-Ny,0,2)
-					print*, "  z --> +/-", atom_positions(0,0,Nz,3)
+					print*, "  x --> +/-", atom_positions(Nx,-Ny,Nz,1)
+					print*, "  y -->    ", atom_positions(Nx,-Ny,Nz,2)
+					print*, "  z --> +/-", atom_positions(Nx,-Ny,Nz,3)
 					print*
 				end if
 			end if
