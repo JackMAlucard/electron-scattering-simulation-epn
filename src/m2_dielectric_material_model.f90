@@ -31,11 +31,12 @@ module m2_dielectric_material_model
 	! index corresponds to the position coordinates.
 	! The subroutine also transforms the magnitudes to au.
 	subroutine setup_simple_silica_model &
-		(grid_boundaries, atom_positions, atom_charges)
+		(grid_boundaries, atom_positions, atom_charges, atom_charges_cbrt)
 		implicit none
 		integer(i8), intent(in) :: grid_boundaries(3)
 		real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
 		integer, allocatable, intent(out) :: atom_charges(:,:,:)
+		integer, allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
 		real(dp) :: d, x, y, z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
@@ -52,6 +53,7 @@ module m2_dielectric_material_model
 		! which is why they are initialized and left with zero values
 		allocate(atom_positions(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1, 3))
 		allocate(atom_charges(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1))
+		allocate(atom_charges_cbrt(-Nx-1:Nx+1, -Ny-1:1, -Nz-1:Nz+1))
 		atom_positions = 0
 		atom_charges = 0
 		do i = -Nx, Nx
@@ -74,6 +76,7 @@ module m2_dielectric_material_model
 				end do
 			end do
 		end do
+		atom_charges_cbrt = atom_charges**(1/3._dp)
 	end subroutine setup_simple_silica_model
 
 end module m2_dielectric_material_model
