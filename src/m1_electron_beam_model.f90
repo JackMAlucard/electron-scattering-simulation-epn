@@ -1,7 +1,21 @@
 module m1_electron_beam_model
+	use m0_utilities, &
+	only: dp, i8, PI, kev_to_atomic_energy_conversion, &
+	angstrom_to_atomic_distance_conversion, random_normal, &
+	vector_translation, rotation_about_x_axis
 	implicit none
-	use m0!, only: sp, dp, i8,...
 	contains
+	
+	subroutine electron_beam_parameters_unit_conversion &
+		(beam_energy, spot_size, beam_target_distance, grazing_angle)
+		implicit none
+		real(dp), intent(inout) :: beam_energy, spot_size
+		real(dp), intent(inout) :: beam_target_distance, grazing_angle
+		call kev_to_atomic_energy_conversion(beam_energy)
+		call angstrom_to_atomic_distance_conversion(spot_size)
+		call angstrom_to_atomic_distance_conversion(beam_target_distance)
+		grazing_angle = grazing_angle*PI/180
+	end subroutine electron_beam_parameters_unit_conversion
 
 	! Subroutine which generates an array with N electron random starting positions
 	! following a normal distribution whose Full Width at Tenth Maximum (FWTM) 
@@ -18,22 +32,13 @@ module m1_electron_beam_model
 	! to the target material distance_to_target (in Å).
 	! The subroutine converts the magnitudes to the atomic system of units.
 	! The vectors generated are in the beam reference system, the 'primed' system.
-	! subroutine electron_beam(e_pos, e_vel, e_acc, N_in, E_in, R_in, prob_dist_in)
-	!subroutine electron_beam(N, E, R, eb_pos, eb_vel, eb_acc)
-	!subroutine electron_beam(N, E, R, eb_r, eb_v, eb_a)
-	!subroutine electron_beam(N, E, R, r_eb, v_eb, a_eb)
-!  subroutine setup_electron_beam(num_electrons, spot_size, &
-!                                 beam_energy, beam_spread, &
-!                                 distance_to_target, grazing_angle, &
-!                                 electron_positions, electron_velocities, &
-!                                 electron_accelerations)
   subroutine setup_electron_beam_model &
-  (num_electrons, spot_size, beam_energy, beam_spread, &
-  beam_target_distance, grazing_angle, electron_positions, &
-  electron_velocities, electron_accelerations)
+		(num_electrons, spot_size, beam_energy, energy_spread, &
+		beam_target_distance, grazing_angle, electron_positions, &
+		electron_velocities, electron_accelerations)
 		implicit none
 		integer(i8), intent(in) :: num_electrons
-		real(dp), intent(in) :: spot_size, beam_energy, beam_spread
+		real(dp), intent(in) :: spot_size, beam_energy, energy_spread
 		real(dp), intent(in) :: beam_target_distance, grazing_angle
 		real(dp), allocatable, intent(out) :: electron_positions(:,:)
 		real(dp), allocatable, intent(out) :: electron_velocities(:,:)
@@ -41,13 +46,8 @@ module m1_electron_beam_model
 		real(dp) :: positions_mu, positions_sigma, energy_mu, energy_sigma
 		real(dp) :: x, y, z, vx, vy, vz
 		real(dp) :: energy_1, energy_2
-		real(dp) :: traslation_vector(3)
+		real(dp) :: translation_vector(3)
 		integer(i8) :: i
-		! Unit conversion
-		call angstrom_to_atomic_distance_conversion(spot_size)
-		call kev_to_atomic_energy_conversion(beam_energy)
-		call angstrom_to_atomic_distance_conversion(distance_to_target)
-		grazing_angle = grazing_angle*PI/180
 		! Allocating electron vectors
 		allocate(electron_positions(num_electrons,3))
 		allocate(electron_velocities(num_electrons,3))
@@ -59,12 +59,12 @@ module m1_electron_beam_model
 		positions_sigma = spot_size/(2*dsqrt(2*dlog(10._dp)))
 		! Electron energies follow a normal distribution with
 		energy_mu = beam_energy
-		energy_sigma = (energy_spread/100)*beam_energy
+		energy_sigma = beam_energy*(energy_spread/100)
 		! Generating electron arrays
 		do i = 1, num_electrons
 			! Generating positions
 			! x and y coordinates
-			call random_normal(beam_mu, beam_sigma, x, y)
+			call random_normal(positions_mu, positions_sigma, x, y)
 			! z coordinate
 			z = 0
 			electron_positions(i,:) = (/x, y, z/)
@@ -87,7 +87,7 @@ module m1_electron_beam_model
 		translation_vector = (/0._dp, 0._dp, -beam_target_distance/)
 		do i = 1, num_electrons
 			! Initial positions translation
-			call vector_translation(traslation_vector, electron_positions(i,:))
+			call vector_translation(translation_vector, electron_positions(i,:))
 !				electron_positions(i,:) = electron_positions(i,:) + T
 			! Rotation around x-axis
 			call rotation_about_x_axis(grazing_angle, electron_positions(i,:))
