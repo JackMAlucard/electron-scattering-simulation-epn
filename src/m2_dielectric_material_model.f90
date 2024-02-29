@@ -36,7 +36,7 @@ module m2_dielectric_material_model
 		integer(i8), intent(in) :: grid_boundaries(3)
 		real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
 		integer, allocatable, intent(out) :: atom_charges(:,:,:)
-		integer, allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
+		real(dp), allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
 		real(dp) :: d, x, y, z
 		integer(i8) :: Nx, Ny, Nz
 		integer(i8) :: i, j, k
