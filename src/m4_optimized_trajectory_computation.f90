@@ -354,23 +354,24 @@ module m4_optimized_trajectory_computation
 !arrays that have been previously defined in the add_electron_to_bin
 !subroutine.
 	subroutine compute_trajectory_optimized &
-		(num_plot_ploints, max_iterations, output_unit, &
-		material_boundaries, atom_positions, atom_charges, atom_charges_cbrt, &
-		cells_boundaries, num_super_electrons, super_electron_positions, &
-		super_electron_charges, initial_distance_to_target, dt, r, v, a, &
-		num_embedded, num_scattered, embedded_positions, scattered_positions)
+		(num_plot_ploints, max_iterations, output_unit, material_boundaries, & 
+		atom_positions, atom_charges, atom_charges_cbrt, cells_boundaries, & 
+		num_super_electrons, super_electron_positions, super_electron_charges, & 
+		dt, r, v, a, num_embedded, num_scattered, embedded_positions, & 
+		scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations, output_unit
 		integer(i8), intent(in) :: material_boundaries(3), cells_boundaries(3)
 		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
 		integer, intent(in) :: atom_charges(:,:,:)
-		real(dp), intent(in) :: initial_distance_to_target, dt
+		real(dp), intent(in) :: dt
 		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
 		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
 		integer, intent(inout) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
 		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
+		real(dp) :: initial_distance_to_target
 		logical :: is_embedded, is_scattered, is_max_iteration
 		logical :: in_material
 		real(dp) :: distance_before_collision, distance_in_material
@@ -385,6 +386,7 @@ module m4_optimized_trajectory_computation
 		! Initializing variables related to end conditions
 		i = 0
 		in_material = .false.
+		initial_distance_to_target = norm2(r)
 		distance_to_target = initial_distance_to_target
 		! Initialize points to be plotted counter
 		j = 0
