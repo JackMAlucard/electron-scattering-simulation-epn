@@ -1,6 +1,6 @@
 module m2_dielectric_material_model
 	use m0_utilities, &
-	only: dp, i8, INTERATOMIC_DIST_SIO2
+		only: dp, i8, INTERATOMIC_DIST_SIO2
 	implicit none
 	contains
 

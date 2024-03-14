@@ -1,6 +1,6 @@
 module m1_electron_beam_model
 	use m0_utilities, &
-	only: dp, i8, PI, kev_to_atomic_energy_conversion, &
+		only: dp, i8, PI, kev_to_atomic_energy_conversion, &
 	angstrom_to_atomic_distance_conversion, random_normal, &
 	vector_translation, rotation_about_x_axis
 	implicit none
