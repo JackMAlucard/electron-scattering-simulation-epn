@@ -1,9 +1,27 @@
 module m3_trajectory_computation
 	use m0_utilities, &
-	only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, random_exponential
+		only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, random_exponential
 	implicit none
 	contains
-
+	
+	subroutine number_of_iterations_estimation &
+		(r, v, dt, max_iterations, num_plot_ploints)
+		implicit none
+		real(dp), intent(in) :: r(3), v(3), dt
+		integer(i8), intent(out) :: max_iterations
+		integer(i8), intent(inout) :: num_plot_ploints
+		real(dp) :: d0, v0, tf
+		! Loose final time estimation using maximum possible time
+		d0 = norm2(r)
+		v0 = norm2(v)
+		tf = 2*d0/v0
+		! Maximum number of iterations
+		max_iterations = dint(tf/dt)
+		! Reducing number of points to be plotted in the case that the maximum 
+		! number of iterations is less than this number  
+		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
+	end subroutine number_of_iterations_estimation
+	
 	! Acceleration of a projectile Electron interacting with a stationary target 
 	! Electron via the electrostatic Coulomb potential. 
 	! The input and output variables are in the atomic unit system (au).
@@ -143,21 +161,21 @@ module m3_trajectory_computation
 	! which point the number of embedded electrons N_e is updated/increased.
 	! I NEED to explain WHY these conditions for the end of the trajectory are set.
 	subroutine compute_trajectory &
-		(num_plot_ploints, max_iterations, output_unit, &
-		material_boundaries, atom_positions, atom_charges, atom_charges_cbrt, &
-		initial_distance_to_target, dt, r, v, a, &
+		(num_plot_ploints, max_iterations, output_unit, material_boundaries, & 
+		atom_positions, atom_charges, atom_charges_cbrt, dt, r, v, a, &
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer(i8), intent(in) :: output_unit, material_boundaries(3)
 		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
 		integer, intent(in) :: atom_charges(:,:,:)
-		real(dp), intent(in) :: initial_distance_to_target, dt
+		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
 		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
 		logical :: is_embedded, is_scattered, is_max_iteration
 		logical :: in_material
+		real(dp) :: initial_distance_to_target
 		real(dp) :: distance_before_collision, distance_in_material
 		real(dp) :: previous_position(3), actual_position(3), step_length
 		real(dp) :: distance_to_target, t
@@ -170,6 +188,7 @@ module m3_trajectory_computation
 		! Initializing variables related to end conditions
 		i = 0
 		in_material = .false.
+		initial_distance_to_target = norm2(r)
 		distance_to_target = initial_distance_to_target
 		! Initialize points to be plotted counter
 		j = 0
