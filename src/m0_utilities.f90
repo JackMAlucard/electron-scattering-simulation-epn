@@ -75,7 +75,7 @@ module m0_utilities
 		z1 = dsqrt(-2*dlog(u1))*dcos(2*PI*u2)
 		z2 = dsqrt(-2*dlog(u1))*dsin(2*PI*u2)
 	end subroutine random_std_normal
-
+	
 	! Subroutine which generates two random number following the general
 	! normal distribution with mean 'mu' and standard deviation 'sigma'.
 	subroutine random_normal(mu, sigma, x1, x2)
@@ -100,7 +100,7 @@ module m0_utilities
 		call random_std_uniform(u)
 		x = -dlog(u)/lambda
 	end subroutine random_exponential
-
+	
 	! VECTOR TRANSFORMATION SUBROUTINES ******************************************
 	subroutine vector_translation(translation_vector, vector)
 		implicit none
@@ -125,7 +125,7 @@ module m0_utilities
 		vector = rotated_vector
 	end subroutine rotation_about_x_axis
 	
-	! INPUT AND OUTPUT SUBROUTINES ***********************************************
+	! INPUT AND OUTPUT FILE HANDLING SUBROUTINES *********************************
 	! Subroutine that reads the main simulation parameters from the 'input.txt' 
 	! file. Parameter units are specified as comments in the 'input.txt' file.
 	subroutine read_input_parameters &
@@ -159,5 +159,54 @@ module m0_utilities
 			read(1, *) dt
 		close(1)
 	end subroutine read_input_parameters
+	
+	! Subroutine that opens the files that will store the output results of the
+	! simulations.
+	subroutine open_output_files(output_unit)
+		implicit none
+		integer :: output_unit
+		! Open file to write electron trajectories
+		open(unit=output_unit+1, file="electron_trajectories.dat", &
+			status='replace', action='write')
+		! Open file to write the final position of embedded electrons
+		open(unit=output_unit+2, file='embedded_positions.dat', &
+			status='replace', action='write')
+		! Open file to write the final position of scattered electrons
+		open(unit=output_unit+3, file='scattered_positions.dat', &
+			status='replace', action='write')
+		! Open file to write the scattered electrons scattering angles 
+		open(unit=output_unit+4, file='scattering_angles.dat', &
+			status='replace', action='write')
+		! Open file to write all final electron positions
+		open(unit=output_unit+5, file='final_electron_positions.dat', &
+			status='replace', action='write')
+		! Open file to write the time evolution of the electrons' final state
+		open(unit=output_unit+6, file='final_state_evolution.dat', &
+			status='replace', action='write')
+	end subroutine open_output_files
+	
+	! Subroutine that writes the status of the simulation of after each 
+	! trajectory computation is completed into a file.
+	subroutine write_simulation_status_information &
+		(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
+		implicit none
+		integer :: output_unit
+		integer(i8) :: i, num_electrons
+		integer(i8) :: num_embedded, num_scattered
+		real(dp) :: total_time
+		open(unit=output_unit, file='simulation_info.dat', &
+			status='replace', action='write')
+			write(output_unit, *) i, "out of", num_electrons, &
+				"electron trajectories simulated"
+			if (i .eq. num_electrons) write(output_unit, *) "SIMULATION COMPLETE!"
+			write(output_unit, *) " Number of electrons embedded: ", num_embedded
+			write(output_unit, *) " Number of electrons scattered:", num_scattered
+			if (i .ne. num_electrons) then
+				write(output_unit, *) "Simulation time thus far:", total_time
+			else
+				write(output_unit, *) "Total simulation time:", total_time
+			end if
+		close(output_unit)
+	end subroutine write_simulation_status_information
 
 end module m0_utilities
