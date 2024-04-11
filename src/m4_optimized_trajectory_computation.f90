@@ -9,83 +9,82 @@ module m4_optimized_trajectory_computation
 	contains
 
 	! Subroutine that takes the position of a projectile electron in 
-	! the material zone and outputs the indices to a nearby material atom.
-	subroutine get_nearby_atom_indices(r, material_boundaries, atom_indices)
+	! the material zone and outputs the indexes to a nearby material atom.
+	subroutine get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
 		implicit none
 		real(dp), intent(in) :: r(3)	! Projectile electron position
 		integer(i8), intent(in) :: material_boundaries(3)
-		integer(i8), intent(out) :: atom_indices(3)
-		integer(i8) :: Nx, Ny, Nz, i, j, k
+		integer(i8), intent(out) :: atom_indexes(3)
+		integer(i8) :: mbi, mbj, mbk, i, j, k
 		! Getting material grid boundaries
-		Nx = material_boundaries(1)
-		Ny = material_boundaries(2)
-		Nz = material_boundaries(3)
+		mbi = material_boundaries(1)
+		mbj = material_boundaries(2)
+		mbk = material_boundaries(3)
 		if (r(1) .ge. 0) then
 			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) + 1
-			if (i .gt. Nx) i = Nx
+			if (i .gt. mbi) i = mbi
 		else
 			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (i .lt. -Nx) i = -Nx
+			if (i .lt. -mbi) i = -mbi
 		end if
 		if (r(2) .ge. 0) then
 			j = 0
 		else
 			j = dint(r(2)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (j .lt. -Ny) j = -Ny
+			if (j .lt. -mbj) j = -mbj
 		end if
 		if (r(3) .ge. 0) then
 			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) + 1
-			if (k .gt. Nz) k = Nz
+			if (k .gt. mbk) k = mbk
 		else
 			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (k .lt. -Nz) k = -Nz
+			if (k .lt. -mbk) k = -mbk
 		end if
-		atom_indices = (/i, j, k/)
-	end subroutine get_nearby_atom_indices
+		atom_indexes = (/i, j, k/)
+	end subroutine get_nearby_atom_indexes
 	
-	! Subroutine that defines the cells indices, effectively partitioning the
-	! material zone into these cells. It also allocates and initializes the 
-	! arrays that store the super electrons information for all cells.
+	! Subroutine that defines the partition boundaries. It also allocates and 
+	! initializes the arrays that store the super electrons information.
 	subroutine setup_cells_and_super_electrons &
-		(num_electrons, material_boundaries, cells_boundaries, &
+		(num_electrons, material_boundaries, partition_boundaries, &
 		num_super_electrons_in_cell, super_electron_charges, & 
 		super_electron_positions)
 		implicit none
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
-		integer(i8), intent(out) :: cells_boundaries(3)
+		integer(i8), intent(out) :: partition_boundaries(3)
 		integer(i8), allocatable, intent(out) :: num_super_electrons_in_cell(:,:,:)
 		integer(i8), allocatable, intent(out) :: super_electron_charges(:,:,:,:)
 		real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
-		integer(i8) :: NCx, NCy, NCz
+		integer(i8) :: pbi, pbj, pbk
 		integer :: max_super_electrons
-		! Computing partition cells boundaries
-		NCx = material_boundaries(1)/CELL_SCALE_FACTOR + 1
-		NCy = material_boundaries(2)/CELL_SCALE_FACTOR + 1
-		NCz = material_boundaries(3)/CELL_SCALE_FACTOR + 1
-		cells_boundaries = (/NCx, NCy, NCz/)
-		! num_cells = (2*NCx)*(NCy)*(2*NCz)
+		! Computing partition boundaries
+		pbi = material_boundaries(1)/CELL_SCALE_FACTOR + 1
+		pbj = material_boundaries(2)/CELL_SCALE_FACTOR + 1
+		pbk = material_boundaries(3)/CELL_SCALE_FACTOR + 1
+		partition_boundaries = (/pbi, pbj, pbk/)
+		! num_cells = (2*pbi)*(pbj)*(2*pbk)
 		! Maximum possible number of super electrons on a cell, considering the
 		! extreme case in which all of the electrons are embedded into a single cell
 		max_super_electrons = (num_electrons - 1)/MAX_EQUIVALENT_CHARGE + 1
 		! Allocating array that stores the number of super electrons on all cells
-		allocate (num_super_electrons_in_cell(-NCx:NCx,-NCy:-1,-NCz:NCz))
+		allocate (num_super_electrons_in_cell(-pbi:pbi,-pbj:-1,-pbk:pbk))
 		! Initializing as zero, since there are no super electrons at the start
 		num_super_electrons_in_cell = 0
 		! Allocating array that stores the super electrons charges on all cells
 		allocate &
-		(super_electron_charges(-NCx:NCx,-NCy:-1,-NCz:NCz,max_super_electrons))
+		(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk,max_super_electrons))
 		! Initializing as zero, since there are no super electrons at the start
 		super_electron_charges = 0
 		! Allocating array that stores the super electrons positions on all cells
 		allocate &
-		(super_electron_positions(-NCx:NCx,-NCy:-1,-NCz:NCz,max_super_electrons,3))
+		(super_electron_positions(-pbi:pbi,-pbj:-1,-pbk:pbk,max_super_electrons,3))
 		! Initializing as zero, the positions will be given as the mean of the 
 		! positions of the electrons that form the super electron
 		super_electron_positions = 0
 	end subroutine setup_cells_and_super_electrons
 
 	! Subroutine that takes the position of an electron r(3), the inverse cell 
-	! length (in a0) and determines the cell_indices of the cubic cell to which 
+	! length (in a0) and determines the cell_indexes of the cubic cell to which 
 	! the embedded electron belongs to in order to update the super electron in 
 	! that cell. 
 	! Electrons embedded after crossing the material boundaries will be included
@@ -93,59 +92,59 @@ module m4_optimized_trajectory_computation
 	! The lowest possible index in the y-direction is -1 since there wouldn't be
 	! any cells with index 0 in any direction. Since the arrays have those slots,
 	! those MUST BE ignored, and as such were initialized and will remain zero.
-	subroutine get_cell_indices(r, cells_boundaries, cell_indices)
+	subroutine get_cell_indexes(r, partition_boundaries, cell_indexes)
 		implicit none
 		real(dp), intent(in) :: r(3)
-		integer(i8), intent(in) :: cells_boundaries(3)
-		integer(i8), intent(out) :: cell_indices(3)
-		integer(i8) :: NCx, NCy, NCz
+		integer(i8), intent(in) :: partition_boundaries(3)
+		integer(i8), intent(out) :: cell_indexes(3)
+		integer(i8) :: pbi, pbj, pbk
 		integer(i8) :: i, j, k
 		! Getting partition cells boundaries
-		NCx = cells_boundaries(1)
-		NCy = cells_boundaries(2)
-		NCz = cells_boundaries(3)
+		pbi = partition_boundaries(1)
+		pbj = partition_boundaries(2)
+		pbk = partition_boundaries(3)
 		if (r(1) .ge. 0) then
 			i = dint(r(1)*CELL_LENGTH_INV) + 1
-			if (i .gt. NCx) i = NCx
+			if (i .gt. pbi) i = pbi
 		else
 			i = dint(r(1)*CELL_LENGTH_INV) - 1
-			if (i .lt. -NCx) i = -NCx
+			if (i .lt. -pbi) i = -pbi
 		end if
 		if (r(2) .ge. 0) then
 			j = -1 ! The top cell includes a bit more space
 		else
 			j = dint(r(2)*CELL_LENGTH_INV) - 1
-			if (j .lt. -NCy) j = -NCy
+			if (j .lt. -pbj) j = -pbj
 		end if
 		if (r(3) .ge. 0) then
 			k = dint(r(3)*CELL_LENGTH_INV) + 1
-			if (k .gt. NCz) k = NCz
+			if (k .gt. pbk) k = pbk
 		else
 			k = dint(r(3)*CELL_LENGTH_INV) - 1
-			if (k .lt. -NCz) k = -NCz
+			if (k .lt. -pbk) k = -pbk
 		end if
-		cell_indices = (/i, j, k/)
-	end subroutine get_cell_indices
+		cell_indexes = (/i, j, k/)
+	end subroutine get_cell_indexes
 	
 	! Subroutine that updated the values of the super electron arrays in the
 	! cell in which the projectile electron with position r gets embedded.
 	subroutine update_super_electron_in_cell &
-		(r, cells_boundaries, num_super_electrons, & 
+		(r, partition_boundaries, num_super_electrons, & 
 		super_electron_charges, super_electron_positions)
 		implicit none
 		real(dp), intent(in) :: r(3)
-		integer(i8), intent(in) :: cells_boundaries(3)
+		integer(i8), intent(in) :: partition_boundaries(3)
 		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
 		integer, intent(inout) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
-		integer(i8) :: cell_indices(3), i, j, k, n
+		integer(i8) :: cell_indexes(3), i, j, k, n
 		integer :: super_electron_charge
 		real(dp) :: super_electron_r(3)
 		! Getting embedded electron's cell based on its position r
-		call get_cell_indices(r, cells_boundaries, cell_indices)
-		i = cell_indices(1)
-		j = cell_indices(2)
-		k = cell_indices(3)		
+		call get_cell_indexes(r, partition_boundaries, cell_indexes)
+		i = cell_indexes(1)
+		j = cell_indexes(2)
+		k = cell_indexes(3)		
 		! Getting number of super electrons in the cell
 		n = num_super_electrons(i,j,k)
 		! Getting current super electron charge
@@ -181,7 +180,7 @@ module m4_optimized_trajectory_computation
 		end if
 		! Printing updated super electron info
 		print*, "Super electron arrays updated!"
-		print*, " Cell indices:", i,j,k
+		print*, " Cell indexes:", i, j, k
 		print*, " New super electron number:", n
 		print*, " New super electron charge:", super_electron_charge
 		print*, " New super electron position:", super_electron_r
@@ -231,7 +230,7 @@ module m4_optimized_trajectory_computation
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
-		integer(i8) :: atom_indices(3)
+		integer(i8) :: atom_indexes(3)
 		integer(i8) :: i, j, k
 		! Half-step velocity update
 		v = v + 0.5*a*dt
@@ -252,10 +251,10 @@ module m4_optimized_trajectory_computation
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			call get_nearby_atom_indices(r, material_boundaries, atom_indices)
-			do i = atom_indices(1) - 1, atom_indices(1) + 1
-				do j = atom_indices(2) - 1, atom_indices(2) + 1
-					do k = atom_indices(3) - 1, atom_indices(3) + 1
+			call get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
+			do i = atom_indexes(1) - 1, atom_indexes(1) + 1
+				do j = atom_indexes(2) - 1, atom_indexes(2) + 1
+					do k = atom_indexes(3) - 1, atom_indexes(3) + 1
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
 						cbrt_Z = atom_charges_cbrt(i,j,k)
@@ -278,18 +277,18 @@ module m4_optimized_trajectory_computation
 	! compute the trajectory of a projectile electron interacting with Nb equivalent
 	! embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
 	subroutine time_step_far_zone &
-		(num_embedded, cells_boundaries, num_super_electrons, &
+		(num_embedded, partition_boundaries, num_super_electrons, &
 		super_electron_charges, super_electron_positions, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, num_super_electrons(:,:,:)
-		integer(i8), intent(in) :: cells_boundaries(3)
+		integer(i8), intent(in) :: partition_boundaries(3)
 		integer, intent(in) :: super_electron_charges(:,:,:,:)
 		real(dp), intent(in) :: super_electron_positions(:,:,:,:,:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3)
 		integer :: Q
-		integer(i8) :: NCx, NCy, NCz, super_electron_num
+		integer(i8) :: pbi, pbj, pbk, super_electron_num
 		integer(i8) :: i, j, k, n
 		! Half-step velocity update
 		v = v + 0.5*a*dt
@@ -298,17 +297,17 @@ module m4_optimized_trajectory_computation
 		! Full-step acceleration update
 		a = 0
 		! Getting partition cells boundaries
-		NCx = cells_boundaries(1)
-		NCy = cells_boundaries(2)
-		NCz = cells_boundaries(3)
+		pbi = partition_boundaries(1)
+		pbj = partition_boundaries(2)
+		pbk = partition_boundaries(3)
 		! Acceleration due to embedded super electrons
 		! ONLY computed if there is AT LEAST one embedded electron
 		if (num_embedded .gt. 0) then
-			do i = -NCx, NCx
+			do i = -pbi, pbi
 				! To avoid checking for unused cells with index 0
 				if (i .ne. 0) then
-					do j = -1,-NCy, -1
-						do k = -NCz, NCz
+					do j = -1,-pbj, -1
+						do k = -pbk, pbk
 							! Getting number of super electrons in the cell
 							super_electron_num = num_super_electrons(i,j,k)
 							! This also avoids unused cells, their super_electron_num is 0
@@ -355,13 +354,13 @@ module m4_optimized_trajectory_computation
 !subroutine.
 	subroutine compute_trajectory_optimized &
 		(num_plot_ploints, max_iterations, output_unit, material_boundaries, & 
-		atom_positions, atom_charges, atom_charges_cbrt, cells_boundaries, & 
+		atom_positions, atom_charges, atom_charges_cbrt, partition_boundaries, & 
 		num_super_electrons, super_electron_positions, super_electron_charges, & 
 		dt, r, v, a, num_embedded, num_scattered, embedded_positions, & 
 		scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations, output_unit
-		integer(i8), intent(in) :: material_boundaries(3), cells_boundaries(3)
+		integer(i8), intent(in) :: material_boundaries(3), partition_boundaries(3)
 		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
 		integer, intent(in) :: atom_charges(:,:,:)
 		real(dp), intent(in) :: dt
@@ -377,7 +376,7 @@ module m4_optimized_trajectory_computation
 		real(dp) :: distance_before_collision, distance_in_material
 		real(dp) :: previous_position(3), actual_position(3), step_length
 		real(dp) :: distance_to_target, t
-		integer(i8) :: Nx, Ny, Nz
+		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j
 		! Initializing end conditions as false
 		is_embedded = .false.
@@ -407,7 +406,7 @@ module m4_optimized_trajectory_computation
 				! Computing next Velocity Verlet time step integration using far zone
 				! approximation
 				call time_step_far_zone &
-				(num_embedded, cells_boundaries, num_super_electrons, &
+				(num_embedded, partition_boundaries, num_super_electrons, &
 				super_electron_charges, super_electron_positions, dt, r, v, a)
 			else
 				! Computing next Velocity Verlet time step integration using near zone
@@ -446,20 +445,20 @@ module m4_optimized_trajectory_computation
 					embedded_positions(num_embedded,:) = r
 					! Update super electron arrays based on new embedded electron
 					call update_super_electron_in_cell &
-					(r, cells_boundaries, num_super_electrons, super_electron_charges, &
-					super_electron_positions)
+					(r, partition_boundaries, num_super_electrons, & 
+					super_electron_charges, super_electron_positions)
 					print*, "Trajectory end --> Electron is embedded"
 					print*, "Total iterations:", i
 					print*, "Final electron position:", r
 					print*, " Distance before collision:", distance_before_collision
 					print*, " Distance travelled inside material:", distance_in_material
 					print*, " Material boundaries:"
-					Nx = material_boundaries(1)
-					Ny = material_boundaries(2)
-					Nz = material_boundaries(3)
-					print*, "  x --> +/-", atom_positions(Nx,-Ny,Nz,1)
-					print*, "  y -->    ", atom_positions(Nx,-Ny,Nz,2)
-					print*, "  z --> +/-", atom_positions(Nx,-Ny,Nz,3)
+					mbi = material_boundaries(1)
+					mbj = material_boundaries(2)
+					mbk = material_boundaries(3)
+					print*, "  x --> +/-", atom_positions(mbi,-mbj,mbk,1)
+					print*, "  y -->    ", atom_positions(mbi,-mbj,mbk,2)
+					print*, "  z --> +/-", atom_positions(mbi,-mbj,mbk,3)
 					print*
 				end if
 			end if
