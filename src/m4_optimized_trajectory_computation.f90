@@ -1,8 +1,8 @@
 module m4_optimized_trajectory_computation
 	use m0_utilities, &
-	only: dp, i8, INTERATOMIC_DIST_SIO2_INV, CELL_SCALE_FACTOR, &
-	MAX_EQUIVALENT_CHARGE, CELL_LENGTH_INV, MATERIAL_HEIGHT_SIO2, &
-	CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE
+		only: dp, i8, INTERATOMIC_DIST_SIO2_INV, CELL_SCALE_FACTOR, &
+		MAX_EQUIVALENT_CHARGE, CELL_LENGTH_INV, MATERIAL_HEIGHT_SIO2, &
+		CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE
 	use m3_trajectory_computation, &
 	only: acceleration_due_to_electron, acceleration_due_to_atom
 	implicit none
