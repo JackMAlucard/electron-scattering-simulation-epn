@@ -166,7 +166,8 @@ module m3_trajectory_computation
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
-		integer(i8), intent(in) :: output_unit, material_boundaries(3)
+		integer, intent(in) :: output_unit
+		integer(i8), intent(in) :: material_boundaries(3)
 		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
 		integer, intent(in) :: atom_charges(:,:,:)
 		real(dp), intent(in) :: dt
@@ -272,5 +273,21 @@ module m3_trajectory_computation
 			end if
 		end do
 	end subroutine compute_trajectory
+	
+	! Computing and writing scattering angles to file
+	subroutine compute_scattering_angles &
+		(num_scattered, scattered_positions, alpha, beta)
+		implicit none
+		integer(i8), intent(in) :: num_scattered
+		real(dp), intent(in) :: scattered_positions(:,:)
+		real(dp), intent(out) :: alpha, beta
+		real(dp) :: x, y, z, s
+		x = scattered_positions(num_scattered,1)
+		y = scattered_positions(num_scattered,2)
+		z = scattered_positions(num_scattered,3)
+		s = dsqrt(x**2 + z**2)
+		alpha = datan2(y, s)*180/PI
+		beta = -datan2(x, z)*180/PI
+	end subroutine compute_scattering_angles
 
 end module m3_trajectory_computation
