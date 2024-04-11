@@ -83,7 +83,7 @@ module m0_utilities
 		real(dp), intent(in) :: mu, sigma
 		real(dp), intent(out) :: x1, x2
 		real(dp) :: z1, z2
-		call random_stdnormal(z1, z2)
+		call random_std_normal(z1, z2)
 		x1 = mu + sigma*z1
 		x2 = mu + sigma*z2
 	end subroutine random_normal
