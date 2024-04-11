@@ -193,7 +193,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 			!print*, "Estimated number of iterations T:", T
 			!print*, "Number of points to be plotted P:", P
 			if (T .lt. P) P = T !Can't plot less points than the number of simulated ones
-			!print*, "Final estimated number of iterations T:", T
+			!print*, "Final estimated number of iterations T:", T, norm2(v(i,:)), v0, E
 			print*, "Simulating", i, "out of", N_eb, "electron trajectories"
 
 			!Computing i-th trajectory
