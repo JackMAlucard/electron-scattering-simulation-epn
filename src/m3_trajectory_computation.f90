@@ -1,6 +1,7 @@
 module m3_trajectory_computation
 	use m0_utilities, &
-		only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, random_exponential
+		only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, &
+		random_exponential
 	implicit none
 	contains
 	
@@ -70,15 +71,14 @@ module m3_trajectory_computation
 			aux = aux*b_coef(i)
 			psi = psi + aux
 		end do
-		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs ! CHECK THAT THIS IS CORRECT
-	!	a = -Z*( (chi/(r**3)) + ((psi*b0_inv*cbrt_Z)/(r**2)) )*rs
+		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs
 	end subroutine acceleration_due_to_atom
 	
 	! TO BE EDITED
 	! Subroutine which computes a time step of the Velocity Verlet algorithm
 	! used to compute the trajectory of a projectile electron interacting with N_e
 	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
-	! bulk of N_a=(2*Nx + 1)*(Ny + 1)*(2*Nz + 1) neutral atoms with atomic number Z.
+	! bulk of N_a=(2*mbi + 1)*(mbj + 1)*(2*mbk + 1) neutral atoms with atomic number Z.
 	! The position of the embedded electrons is stored in the array e_emb(N_et,3).
 	! Acceleration due to embedded electrons is computed for EVERY embedded electron
 	! and ONLY if there is AT LEAST one embedded electron.
@@ -98,7 +98,7 @@ module m3_trajectory_computation
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
-		integer(i8) :: Nx, Ny, Nz
+		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j, k
 		! Half-step velocity update
 		v = v + 0.5*a*dt
@@ -116,16 +116,16 @@ module m3_trajectory_computation
 			end do
 		end if
 		! Getting material grid boundaries
-		Nx = material_boundaries(1)
-		Ny = material_boundaries(2)
-		Nz = material_boundaries(3)
+		mbi = material_boundaries(1)
+		mbj = material_boundaries(2)
+		mbk = material_boundaries(3)
 		! Acceleration due to material atoms
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			do i = -Nx, Nx
-				do j = -Ny, 0, -1
-					do k = -Nz, Nz
+			do i = -mbi, mbi
+				do j = -mbj, 0, -1
+					do k = -mbk, mbk
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
 						cbrt_Z = atom_charges_cbrt(i,j,k)
@@ -239,12 +239,12 @@ module m3_trajectory_computation
 					print*, " Distance before collision:", distance_before_collision
 					print*, " Distance travelled inside material:", distance_in_material
 					print*, " Material boundaries:"
-					Nx = material_boundaries(1)
-					Ny = material_boundaries(2)
-					Nz = material_boundaries(3)
-					print*, "  x --> +/-", atom_positions(Nx,-Ny,Nz,1)
-					print*, "  y -->    ", atom_positions(Nx,-Ny,Nz,2)
-					print*, "  z --> +/-", atom_positions(Nx,-Ny,Nz,3)
+					mbi = material_boundaries(1)
+					mbj = material_boundaries(2)
+					mbk = material_boundaries(3)
+					print*, "  x --> +/-", atom_positions(mbi,-mbj,mbk,1)
+					print*, "  y -->    ", atom_positions(mbi,-mbj,mbk,2)
+					print*, "  z --> +/-", atom_positions(mbi,-mbj,mbk,3)
 					print*
 				end if
 			end if
