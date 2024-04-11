@@ -11,11 +11,11 @@ module m3_trajectory_computation
 		real(dp), intent(in) :: r(3), v(3), dt
 		integer(i8), intent(out) :: max_iterations
 		integer(i8), intent(inout) :: num_plot_ploints
-		real(dp) :: d0, v0, tf
-		! Loose final time estimation using maximum possible time
+		real(dp) :: d0, v0, a0, tf
+		! Loose final time estimation using seven times the maximum possible time
 		d0 = norm2(r)
 		v0 = norm2(v)
-		tf = 2*d0/v0
+		tf = 7*2*d0/v0
 		! Maximum number of iterations
 		max_iterations = dint(tf/dt)
 		! Reducing number of points to be plotted in the case that the maximum 
@@ -179,7 +179,7 @@ module m3_trajectory_computation
 		real(dp) :: distance_before_collision, distance_in_material
 		real(dp) :: previous_position(3), actual_position(3), step_length
 		real(dp) :: distance_to_target, t
-		integer(i8) :: Nx, Ny, Nz
+		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j
 		! Initializing end conditions as false
 		is_embedded = .false.
