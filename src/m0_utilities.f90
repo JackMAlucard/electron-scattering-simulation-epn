@@ -1,14 +1,14 @@
 module m0_utilities
 	implicit none
 
-	! NUMERICAL STORAGE SIZE PARAMETERS FOR REAL AND INTEGER VALUES***************
+	! NUMERICAL STORAGE SIZE PARAMETERS FOR REAL AND INTEGER VALUES **************
 	! Double precision real numbers,
 	! 15 digits, range 10**(-307) to 10**(307)-1; 64 bits
 	integer, parameter :: dp = selected_real_kind(15, 307)
 	! Long length for integers, range -2**63 to 2**63-1; 64 bits
 	integer, parameter :: i8 = selected_int_kind(18)
 
-	! NUMERICAL CONSTANTS*********************************************************
+	! NUMERICAL CONSTANTS ********************************************************
 	real(dp), parameter :: PI = dacos(-1._dp)
 	real(dp), parameter :: INTERATOMIC_DIST_SIO2 = 1.77/0.5291772! a0, 1.77 Å
 	real(dp), parameter :: INTERATOMIC_DIST_SIO2_INV = 1/INTERATOMIC_DIST_SIO2
@@ -22,9 +22,8 @@ module m0_utilities
 	real(dp), parameter :: MAX_EQUIVALENT_CHARGE = 180
 
 	contains
-	! UNIT CONVERSION SUBROUTINES*************************************************
+	! UNIT CONVERSION SUBROUTINES ************************************************
 	! Energy conversion from keV to hartree Eh (atomic)
-	!	real(dp) function EinAU(EinkeV)
 	subroutine kev_to_atomic_energy_conversion(energy)
 		implicit none
 		real(dp), intent(inout) :: energy
@@ -32,7 +31,6 @@ module m0_utilities
 	end subroutine kev_to_atomic_energy_conversion
 	
 	! Distance conversion from meters m (SI) to Bohr radii a0 (atomic)
-	! real(dp) function dinAUfromSI(dinSI)
 	subroutine si_to_atomic_distance_conversion(distance)
 		implicit none
 		real(dp), intent(inout) :: distance
@@ -40,7 +38,6 @@ module m0_utilities
 	end subroutine si_to_atomic_distance_conversion
 
 	! Distance conversion from angstroms to Bohr radii a0 (atomic)
-!	real(dp) function dinAU(dinangstroms)
 	subroutine angstrom_to_atomic_distance_conversion(distance)
 		implicit none
 		real(dp), intent(inout) :: distance
@@ -48,7 +45,6 @@ module m0_utilities
 	end subroutine angstrom_to_atomic_distance_conversion
 
 	! Distance conversion from Bohr radii a0 (atomic) to meters (SI)
-!	real(dp) function dinSI(dinAU)
 	subroutine atomic_to_si_distance_conversion(distance)
 		implicit none
 		real(dp), intent(inout) :: distance
@@ -105,7 +101,7 @@ module m0_utilities
 		x = -dlog(u)/lambda
 	end subroutine random_exponential
 
-	!VECTOR TRANSFORMATIONS SUBROUTINES*******************************************
+	! VECTOR TRANSFORMATION SUBROUTINES ******************************************
 	subroutine vector_translation(translation_vector, vector)
 		implicit none
 		real(dp), intent(in) :: translation_vector(3)
@@ -113,14 +109,12 @@ module m0_utilities
 		vector = vector + translation_vector
 	end subroutine vector_translation
 	
-!	subroutine matrix_vector_product(M, V)
 	subroutine rotation_about_x_axis(theta, vector)
 		implicit none
 		real(dp), intent(in) :: theta
 		real(dp), intent(inout) :: vector(3)
 		real(dp) :: rotation_matrix(3,3), rotated_vector(3)
 		integer :: i
-		!Rotation matrix
 		rotation_matrix(1,:) = (/1._dp, 0._dp, 0._dp/)
 		rotation_matrix(2,:) = (/0._dp, dcos(theta), -dsin(theta)/)
 		rotation_matrix(3,:) = (/0._dp, dsin(theta), dcos(theta)/)
@@ -130,5 +124,40 @@ module m0_utilities
 		end do
 		vector = rotated_vector
 	end subroutine rotation_about_x_axis
+	
+	! INPUT AND OUTPUT SUBROUTINES ***********************************************
+	! Subroutine that reads the main simulation parameters from the 'input.txt' 
+	! file. Parameter units are specified as comments in the 'input.txt' file.
+	subroutine read_input_parameters &
+		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
+		beam_target_distance, grazing_angle, material_boundaries, &
+		num_plot_ploints, dt)
+		implicit none
+		integer(i8), intent(out) :: num_electrons, material_boundaries
+		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
+		integer, intent(out) :: spot_size_factor
+		real(dp), intent(out) :: grazing_angle, dt
+		integer(i8), intent(out) :: num_plot_ploints
+		open(unit=1, file='input.txt', status='old', action='read')
+			read(1, *) ! beam_energy (keV)
+			read(1, *) beam_energy
+			read(1, *) ! grazing_angle (º)
+			read(1, *) grazing_angle
+			read(1, *) ! num_electrons (int)
+			read(1, *) num_electrons
+			read(1, *) ! energy_spread (%)
+			read(1, *) energy_spread
+			read(1, *) ! spot_size_factor (int)
+			read(1, *) spot_size_factor
+			read(1, *) ! beam_target_distance (Å)
+			read(1, *) beam_target_distance
+			read(1, *) ! material_boundaries (int, int, int)
+			read(1, *) material_boundaries
+			read(1, *) ! num_plot_ploints (int)
+			read(1, *) num_plot_ploints
+			read(1, *) ! dt (atomic units of time), time step size
+			read(1, *) dt
+		close(1)
+	end subroutine read_input_parameters
 
 end module m0_utilities
