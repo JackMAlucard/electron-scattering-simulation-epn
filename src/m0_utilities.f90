@@ -133,7 +133,7 @@ module m0_utilities
 		beam_target_distance, grazing_angle, material_boundaries, &
 		num_plot_ploints, dt)
 		implicit none
-		integer(i8), intent(out) :: num_electrons, material_boundaries
+		integer(i8), intent(out) :: num_electrons, material_boundaries(3)
 		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
 		integer, intent(out) :: spot_size_factor
 		real(dp), intent(out) :: grazing_angle, dt
