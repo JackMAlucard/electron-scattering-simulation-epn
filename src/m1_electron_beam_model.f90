@@ -1,18 +1,17 @@
 module m1_electron_beam_model
 	use m0_utilities, &
-		only: dp, i8, PI, kev_to_atomic_energy_conversion, &
-	angstrom_to_atomic_distance_conversion, random_normal, &
-	vector_translation, rotation_about_x_axis
+		only: dp, i8, PI, INTERATOMIC_DIST_SIO2, kev_to_atomic_energy_conversion, &
+		angstrom_to_atomic_distance_conversion, random_normal, vector_translation, &
+		rotation_about_x_axis
 	implicit none
 	contains
 	
 	subroutine electron_beam_parameters_unit_conversion &
-		(beam_energy, spot_size, beam_target_distance, grazing_angle)
+		(beam_energy, beam_target_distance, grazing_angle)
 		implicit none
-		real(dp), intent(inout) :: beam_energy, spot_size
+		real(dp), intent(inout) :: beam_energy
 		real(dp), intent(inout) :: beam_target_distance, grazing_angle
 		call kev_to_atomic_energy_conversion(beam_energy)
-		call angstrom_to_atomic_distance_conversion(spot_size)
 		call angstrom_to_atomic_distance_conversion(beam_target_distance)
 		grazing_angle = grazing_angle*PI/180
 	end subroutine electron_beam_parameters_unit_conversion
@@ -33,16 +32,18 @@ module m1_electron_beam_model
 	! The subroutine converts the magnitudes to the atomic system of units.
 	! The vectors generated are in the beam reference system, the 'primed' system.
   subroutine setup_electron_beam_model &
-		(num_electrons, spot_size, beam_energy, energy_spread, &
+		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
 		beam_target_distance, grazing_angle, electron_positions, &
 		electron_velocities, electron_accelerations)
 		implicit none
 		integer(i8), intent(in) :: num_electrons
-		real(dp), intent(in) :: spot_size, beam_energy, energy_spread
+		integer, intent(in) :: spot_size_factor
+		real(dp), intent(in) :: beam_energy, energy_spread
 		real(dp), intent(in) :: beam_target_distance, grazing_angle
 		real(dp), allocatable, intent(out) :: electron_positions(:,:)
 		real(dp), allocatable, intent(out) :: electron_velocities(:,:)
 		real(dp), allocatable, intent(out) :: electron_accelerations(:,:)
+		real(dp) :: spot_size
 		real(dp) :: positions_mu, positions_sigma, energy_mu, energy_sigma
 		real(dp) :: x, y, z, vx, vy, vz
 		real(dp) :: energy_1, energy_2
@@ -52,6 +53,8 @@ module m1_electron_beam_model
 		allocate(electron_positions(num_electrons,3))
 		allocate(electron_velocities(num_electrons,3))
 		allocate(electron_accelerations(num_electrons,3))
+		! Defining spot size
+		spot_size = spot_size_factor*INTERATOMIC_DIST_SIO2
 		! Electron positions follow a normal distribution with
 		! Full Width at Tenth of Maximum (FWTM):
 		! FWTM = 2*sqrt(2*ln(10))*sigma ~ 4.29193*sigma
