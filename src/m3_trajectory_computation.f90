@@ -124,13 +124,13 @@ module m3_trajectory_computation
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
 			do i = -mbi, mbi
-				do j = -mbj, 0, -1
+				do j = 0, -mbj, -1
 					do k = -mbk, mbk
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
-						cbrt_Z = atom_charges_cbrt(i,j,k)
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
+							cbrt_Z = atom_charges_cbrt(i,j,k)
 							call acceleration_due_to_atom(r, rt, Z, cbrt_Z, ak)
 							a = a + ak
 						end if
