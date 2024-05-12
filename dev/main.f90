@@ -66,8 +66,8 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!MS1 TEST: ELECTRON BEAM GENERATION*******************************************	
 	!Input parameters
-	N_eb = 150
-	E = 10	!keV
+	N_eb = 5000
+	E = 8	!keV
 	R_eb = 3*1.77 !Å, considering the width of the standard cuboid in scc is Nx*1.77
 	pd = 1 !Gaussian !4 Uniform distribution
 	call electron_beam(r, v, a, N_eb, E, R_eb, pd)
@@ -82,7 +82,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 		
 		!Input parameters
 		theta = 84!º
-		d0 = 80!Å
+		d0 = 84!Å
 		call trnsf_to_surf_ref_sys(r, v, a, theta_in=theta, d_in=d0)
 		!e_pos, e_vel, e_acc, theta_in, d_in
 		
