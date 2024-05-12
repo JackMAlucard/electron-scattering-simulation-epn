@@ -37,7 +37,7 @@ module m2_dielectric_material_model
 		real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
 		integer, allocatable, intent(out) :: atom_charges(:,:,:)
 		real(dp), allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
-		real(dp) :: d, x, y, z
+		real(dp) :: x, y, z
 		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j, k
 		! Getting material grid boundaries
@@ -56,6 +56,7 @@ module m2_dielectric_material_model
 		allocate(atom_charges_cbrt(-mbi-1:mbi+1, -mbj-1:1, -mbk-1:mbk+1))
 		atom_positions = 0
 		atom_charges = 0
+		atom_charges_cbrt = 0
 		do i = -mbi, mbi
 			x = i*INTERATOMIC_DIST_SIO2
 			do j = 0, -mbj, -1
@@ -63,13 +64,13 @@ module m2_dielectric_material_model
 				do k = -mbk, mbk
 					z = k*INTERATOMIC_DIST_SIO2
 					atom_positions(i,j,k,:) = (/x, y, z/)
-					!Silicon positions, i and k indexes are both even 
+					! Silicon positions, i and k indexes are both even 
 					if (mod(abs(i),2) .eq. 0 .and. mod(abs(k),2) .eq. 0) then
 						atom_charges(i,j,k) = 14
-					!Empty positions, i and k indexes are both odd
+					! Empty positions, i and k indexes are both odd
 					else if (mod(abs(i),2) .eq. 1 .and. mod(abs(k),2) .eq. 1) then
 						atom_charges(i,j,k) = 0
-					!Oxygen positions, all other combinations
+					! Oxygen positions, all other combinations
 					else
 						atom_charges(i,j,k) = 8
 					end if
