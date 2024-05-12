@@ -92,7 +92,7 @@ integer(i8) :: i, j, k
 	material_height = atoms(0,0,0,2) + 0.5*d
 	if (r(2) .lt. material_height) then
 		do i = -Nx, Nx 
-			do j = -Ny, 0, -1
+			do j = 0, -Ny, -1
 				do k = -Ny, Ny
 					!Only compute acceleration with positions with atoms
 					if (Z(i, j, k) .ne. 0) then
