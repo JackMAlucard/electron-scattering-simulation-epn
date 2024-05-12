@@ -86,6 +86,15 @@ module m1_electron_beam_model
 			! Initializing accelerations
 			electron_accelerations(i,:) = 0
 		end do
+		! Printing beam electrons' initial positions, velocities, and accelerations
+		! before applying vector transformations to them
+		open(unit=23, file='beam_model.dat', status='replace', action='write')
+		do i = 1, num_electrons
+			write(23, *) electron_positions(i,:), electron_velocities(i,:), &
+			electron_accelerations(i,:)
+		end do
+		write(23, *)
+		write(23, *)
 		! Transforming electron beam vectors
 		translation_vector = (/0._dp, 0._dp, -beam_target_distance/)
 		do i = 1, num_electrons
@@ -96,6 +105,13 @@ module m1_electron_beam_model
 			call rotation_about_x_axis(grazing_angle, electron_positions(i,:))
 			call rotation_about_x_axis(grazing_angle, electron_velocities(i,:))
 		end do
+		! Printing beam electrons' initial positions, velocities, and accelerations
+		! after applying vector transformations to them
+		do i = 1, num_electrons
+			write(23, *) electron_positions(i,:), electron_velocities(i,:), &
+			electron_accelerations(i,:)
+		end do
+		close(23)
 	end subroutine setup_electron_beam_model
 
 end module m1_electron_beam_model
