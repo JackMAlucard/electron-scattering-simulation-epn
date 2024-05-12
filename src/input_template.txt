@@ -1,0 +1,18 @@
+! beam_energy (keV)
+8
+! grazing_angle (º)
+6
+! num_electrons (int)
+1500
+! energy_spread (%)
+10
+! spot_size_factor (int), spot_size = spot_size_factor*INTERATOMIC_DIST_SIO2 (a0)
+3
+! beam_target_distance (Å)
+80
+! material_boundaries (int, int, int)
+30, 30, 75
+! num_plot_ploints (int)
+5000
+! dt (atomic units of time), time step size
+1.d-5
