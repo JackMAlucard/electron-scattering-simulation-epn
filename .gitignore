@@ -18,4 +18,5 @@
 
 # Specific files #
 #######################
-src/input.txt
+*input.txt
+*beam_model.gp
