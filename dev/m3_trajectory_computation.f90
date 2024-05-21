@@ -93,8 +93,9 @@ integer(i8) :: i, j, k
 	if (r(2) .lt. material_height) then
 		do i = -Nx, Nx 
 			do j = 0, -Ny, -1
-				do k = -Ny, Ny
+				do k = -Nz, Nz
 					!Only compute acceleration with positions with atoms
+					!print*, i, j, k, Z(i, j, k)
 					if (Z(i, j, k) .ne. 0) then
 						call akEA(r, atoms(i, j, k, :), Z(i, j, k), ak)
 						a = a + ak
@@ -151,6 +152,7 @@ real(dp) :: tk
 	!Initialize points to be plotted counter
 	j = 0
 	do while ( .not.(end_embedded .or. end_scattered .or. end_iterations) )
+	!print*, k, 'out of a maximum of', T
 		tk = k*dt !t0 = 0, just to print to file, not needed for computations
 		!Plotting only P points
 		if ( (mod(k,T/P) .eq. 0) .and. j .lt. P ) then
