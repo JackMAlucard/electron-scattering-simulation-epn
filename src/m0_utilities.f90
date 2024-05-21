@@ -135,7 +135,7 @@ module m0_utilities
 		implicit none
 		integer(i8), intent(out) :: num_electrons, material_boundaries(3)
 		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
-		integer, intent(out) :: spot_size_factor
+		real(dp), intent(out) :: spot_size_factor
 		real(dp), intent(out) :: grazing_angle, dt
 		integer(i8), intent(out) :: num_plot_ploints
 		open(unit=1, file='input.txt', status='old', action='read')

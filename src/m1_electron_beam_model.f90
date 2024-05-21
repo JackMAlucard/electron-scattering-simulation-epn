@@ -37,7 +37,7 @@ module m1_electron_beam_model
 		electron_velocities, electron_accelerations)
 		implicit none
 		integer(i8), intent(in) :: num_electrons
-		integer, intent(in) :: spot_size_factor
+		real(dp), intent(in) :: spot_size_factor
 		real(dp), intent(in) :: beam_energy, energy_spread
 		real(dp), intent(in) :: beam_target_distance, grazing_angle
 		real(dp), allocatable, intent(out) :: electron_positions(:,:)

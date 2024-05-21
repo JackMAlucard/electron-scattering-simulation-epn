@@ -12,7 +12,7 @@ program main
 	implicit none
 	! m1_electron_beam_model module variables ************************************
 	integer(i8) :: num_electrons
-	integer :: spot_size_factor
+	real(dp) :: spot_size_factor
 	real(dp) :: beam_energy, energy_spread
 	real(dp) :: beam_target_distance, grazing_angle
 	real(dp), allocatable :: electron_positions(:,:), electron_velocities(:,:)
