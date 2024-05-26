@@ -55,7 +55,6 @@ module m3_trajectory_computation
 		real(dp), parameter :: a_coef(3) = (/0.10_dp, 0.55_dp, 0.35_dp/)
 		real(dp), parameter :: b_coef(3) = (/6.00_dp, 1.20_dp, 0.30_dp/)
 		real(dp), parameter :: b0_inv = ((2**7)/(3*PI)**2)**(1/3._dp)!b0_inv = 1/b0
-		!real(dp), parameter :: b0_inv = 1.1295078101832_dp !b0_inv = 1/b0
 		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
 		real(dp) :: chi, psi, aux
 		integer(i8) :: i
@@ -72,7 +71,6 @@ module m3_trajectory_computation
 			psi = psi + aux
 		end do
 		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs
-!		a = -Z*( (chi/(r**3)) + ((psi*cbrt_Z*b0_inv)/(r**2)) )*rs
 	end subroutine acceleration_due_to_atom
 	
 	! TO BE EDITED
@@ -109,8 +107,6 @@ module m3_trajectory_computation
 		v = v + 0.5*a*dt
 		! Position update
 		r = r + v*dt
-!		r = r + v*dt + 0.5*a*dt*dt
-!		v = v + 0.5*a*dt
 		! Full-step acceleration update
 		a = 0
 		! Acceleration due to embedded electrons
