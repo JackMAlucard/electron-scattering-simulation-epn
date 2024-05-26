@@ -1,10 +1,10 @@
 module m4_optimized_trajectory_computation
 	use m0_utilities, &
 		only: dp, i8, INTERATOMIC_DIST_SIO2_INV, CELL_SCALE_FACTOR, &
-		MAX_EQUIVALENT_CHARGE, CELL_LENGTH_INV, MATERIAL_HEIGHT_SIO2, &
-		CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE
+		CELL_LENGTH_INV, MAX_EQUIVALENT_CHARGE, MATERIAL_HEIGHT_SIO2, &
+		CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE, random_exponential
 	use m3_trajectory_computation, &
-	only: acceleration_due_to_electron, acceleration_due_to_atom
+		only: acceleration_due_to_electron, acceleration_due_to_atom
 	implicit none
 	contains
 
@@ -47,12 +47,11 @@ module m4_optimized_trajectory_computation
 	! initializes the arrays that store the super electrons information.
 	subroutine setup_cells_and_super_electrons &
 		(num_electrons, material_boundaries, partition_boundaries, &
-		num_super_electrons_in_cell, super_electron_charges, & 
-		super_electron_positions)
+		num_super_electrons, super_electron_charges, super_electron_positions)
 		implicit none
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
 		integer(i8), intent(out) :: partition_boundaries(3)
-		integer(i8), allocatable, intent(out) :: num_super_electrons_in_cell(:,:,:)
+		integer(i8), allocatable, intent(out) :: num_super_electrons(:,:,:)
 		integer(i8), allocatable, intent(out) :: super_electron_charges(:,:,:,:)
 		real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
 		integer(i8) :: pbi, pbj, pbk
@@ -67,9 +66,9 @@ module m4_optimized_trajectory_computation
 		! extreme case in which all of the electrons are embedded into a single cell
 		max_super_electrons = (num_electrons - 1)/MAX_EQUIVALENT_CHARGE + 1
 		! Allocating array that stores the number of super electrons on all cells
-		allocate (num_super_electrons_in_cell(-pbi:pbi,-pbj:-1,-pbk:pbk))
+		allocate (num_super_electrons(-pbi:pbi,-pbj:-1,-pbk:pbk))
 		! Initializing as zero, since there are no super electrons at the start
-		num_super_electrons_in_cell = 0
+		num_super_electrons = 0
 		! Allocating array that stores the super electrons charges on all cells
 		allocate &
 		(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk,max_super_electrons))
@@ -134,9 +133,15 @@ module m4_optimized_trajectory_computation
 		implicit none
 		real(dp), intent(in) :: r(3)
 		integer(i8), intent(in) :: partition_boundaries(3)
-		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
-		integer, intent(inout) :: super_electron_charges(:,:,:,:)
-		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
+		integer(i8), intent(inout) :: num_super_electrons( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):)
+		integer, intent(inout) :: super_electron_charges( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :)
+		real(dp), intent(inout) :: super_electron_positions( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :, :)
 		integer(i8) :: cell_indexes(3), i, j, k, n
 		integer :: super_electron_charge
 		real(dp) :: super_electron_r(3)
@@ -175,8 +180,8 @@ module m4_optimized_trajectory_computation
 			super_electron_charges(i,j,k,n) = 1
 			super_electron_positions(i,j,k,n,:) = r
 		else
-			!Everything else is an error (TB REMOVED)
-			print*, "ERROR"
+			!Everything else is an error
+			print*, "ERROR UPDATING SUPER ELECTRON IN CELL"
 		end if
 		! Printing updated super electron info
 		print*, "Super electron arrays updated!"
@@ -224,9 +229,14 @@ module m4_optimized_trajectory_computation
 		atom_charges, atom_charges_cbrt, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
-		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:)
-		real(dp), intent(in) :: atom_charges_cbrt(:,:,:), dt
+		real(dp), intent(in) :: embedded_positions(:,:)
+		real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+		integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
+		real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
+		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
@@ -257,9 +267,9 @@ module m4_optimized_trajectory_computation
 					do k = atom_indexes(3) - 1, atom_indexes(3) + 1
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
-						cbrt_Z = atom_charges_cbrt(i,j,k)
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
+							cbrt_Z = atom_charges_cbrt(i,j,k)
 							call acceleration_due_to_atom(r, rt, Z, cbrt_Z, ak)
 							a = a + ak
 						end if
@@ -280,10 +290,14 @@ module m4_optimized_trajectory_computation
 		(num_embedded, partition_boundaries, num_super_electrons, &
 		super_electron_charges, super_electron_positions, dt, r, v, a)
 		implicit none
-		integer(i8), intent(in) :: num_embedded, num_super_electrons(:,:,:)
-		integer(i8), intent(in) :: partition_boundaries(3)
-		integer, intent(in) :: super_electron_charges(:,:,:,:)
-		real(dp), intent(in) :: super_electron_positions(:,:,:,:,:)
+		integer(i8), intent(in) :: num_embedded, partition_boundaries(3)
+		integer(i8), intent(in) :: num_super_electrons(-partition_boundaries(1):, &
+			-partition_boundaries(2):, -partition_boundaries(3):)
+		integer, intent(in) :: super_electron_charges(-partition_boundaries(1):, &
+			-partition_boundaries(2):, -partition_boundaries(3):, :)
+		real(dp), intent(in) :: super_electron_positions( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :, :)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3)
@@ -359,14 +373,25 @@ module m4_optimized_trajectory_computation
 		dt, r, v, a, num_embedded, num_scattered, embedded_positions, & 
 		scattered_positions)
 		implicit none
-		integer(i8), intent(in) :: num_plot_ploints, max_iterations, output_unit
+		integer(i8), intent(in) :: num_plot_ploints, max_iterations
+		integer, intent(in) :: output_unit
 		integer(i8), intent(in) :: material_boundaries(3), partition_boundaries(3)
-		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+		integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
+		real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
 		real(dp), intent(in) :: dt
-		integer(i8), intent(inout) :: num_super_electrons(:,:,:)
-		real(dp), intent(inout) :: super_electron_positions(:,:,:,:,:)
-		integer, intent(inout) :: super_electron_charges(:,:,:,:)
+		integer(i8), intent(inout) :: num_super_electrons( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):)
+		integer, intent(inout) :: super_electron_charges( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :)
+		real(dp), intent(inout) :: super_electron_positions( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :, :)
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
 		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
@@ -443,7 +468,7 @@ module m4_optimized_trajectory_computation
 					is_embedded = .true.
 					num_embedded = num_embedded + 1
 					embedded_positions(num_embedded,:) = r
-					! Update super electron arrays based on new embedded electron
+					! Updating super electron arrays based on new embedded electron
 					call update_super_electron_in_cell &
 					(r, partition_boundaries, num_super_electrons, & 
 					super_electron_charges, super_electron_positions)
