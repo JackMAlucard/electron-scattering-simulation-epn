@@ -52,7 +52,7 @@ module m4_optimized_trajectory_computation
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
 		integer(i8), intent(out) :: partition_boundaries(3)
 		integer(i8), allocatable, intent(out) :: num_super_electrons(:,:,:)
-		integer(i8), allocatable, intent(out) :: super_electron_charges(:,:,:,:)
+		integer, allocatable, intent(out) :: super_electron_charges(:,:,:,:)
 		real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
 		integer(i8) :: pbi, pbj, pbk
 		integer :: max_super_electrons
@@ -320,7 +320,7 @@ module m4_optimized_trajectory_computation
 			do i = -pbi, pbi
 				! To avoid checking for unused cells with index 0
 				if (i .ne. 0) then
-					do j = -1,-pbj, -1
+					do j = -1, -pbj, -1
 						do k = -pbk, pbk
 							! Getting number of super electrons in the cell
 							super_electron_num = num_super_electrons(i,j,k)

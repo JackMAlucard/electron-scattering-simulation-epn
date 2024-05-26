@@ -9,7 +9,7 @@ program main
 	use m3_trajectory_computation, &
 		only: number_of_iterations_estimation, compute_scattering_angles
 	use m4_optimized_trajectory_computation, &
-		only: compute_trajectory_optimized
+		only: setup_cells_and_super_electrons, compute_trajectory_optimized
 	implicit none
 	! m1_electron_beam_model module variables ************************************
 	integer(i8) :: num_electrons
@@ -71,6 +71,10 @@ program main
 		(material_boundaries, atom_positions, atom_charges, atom_charges_cbrt)
 	
 	! COMPUTING OPTIMIZED ELECTRON TRAJECTORIES **********************************
+	! Setting up partition cells and super electron arrays
+	call setup_cells_and_super_electrons &
+		(num_electrons, material_boundaries, partition_boundaries, &
+		num_super_electrons, super_electron_charges, super_electron_positions)
 	! Allocating and initializing embedded and scattered positions arrays
 	allocate(embedded_positions(num_electrons,3))
 	allocate(scattered_positions(num_electrons,3))
