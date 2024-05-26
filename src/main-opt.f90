@@ -1,347 +1,172 @@
 program main
-
-use m0!kind_parameters, only: sp, dp, i8
-!use units, only: EinAU, dinAUfromSI
-use m1!MS1, only: electron_beam, trnsf_to_surf_ref_sys
-use m2!MS2! only???
-use m3!MS3
-use m4
-
-implicit none
-!*******************************************************************************
-!MS1 Test variables
-!electron_beam subroutine variables
-real(dp), allocatable :: r(:,:), v(:,:), a(:,:) !Electron arrays
-integer(i8) :: N_eb	!Number of electrons in the beam
-real(dp) :: E, R_eb	!Energy (keV) and radius (Å) of the beam
-integer :: pd	!Probability distribution
-!trnsf_to_surf_ref_sys
-real(dp) :: theta, d0	!incident angle (º) and initial electron beam distance (Å)
-!*******************************************************************************
-!MS2 Test variables
-!simple_silica_model variables
-real(dp) :: d!, Lx, Ly, Lz?	!Interatomic distance and dimensions of the cuboid
-integer(i8) :: Nx, Ny, Nz!, N_scc
-real(dp), allocatable :: ssm(:,:,:,:)	!Indexes and positions array
-integer, allocatable :: Z(:,:,:) !Indexes and charges array
-!*******************************************************************************
-!MS3 Test variables
-!sort_electron and add_electron_to_bin variables
-integer(i8) :: Nxb, Nyb, Nzb, N_bins	!Bins boundary indices and number of bins
-integer(i8) :: max_eq		!Maximum possible equivalent charge, 180 from tests (max 182)
-!Maximum possible number of equivalent electrons per bin
-integer(i8) :: max_neq	!At most int(N_beam/max_eq)+1 equivalent electrons
-!Number of equivalent electrons present in each bin, between 0 and max_neq
-integer(i8), allocatable :: b_neq(:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb)
-!Equivalent charge of each equivalent electron of each bin, between 0 and max_eq
-integer(i8), allocatable :: b_ec(:,:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,max_neq)
-!Equivalent (mean) position of each equivalent electron of each bin
-real(dp), allocatable :: b_er(:,:,:,:,:)	!(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,max_neq)
-real(dp) :: FFd	!Far Field (effective) distance
-integer :: bin_size
-!trajectory subroutine variables
-integer(i8) :: P, T
-real(dp) :: dt, a0, v0, tf, l
-integer(i8) :: Ne, Ns	!Number of embedded and scattered electrons
-real(dp), allocatable :: emb(:,:)	!Simulation embedded electrons array
-real(dp), allocatable :: sct(:,:) !Simulation scattered electrons array
-!scattered electron angles
-real(dp) :: xs, ys, zs
-real(dp) :: s, alfa, beta
-!*******************************************************************************
-!General variables
-integer(i8) :: i, j, k
-integer(i8), parameter :: ou = 13, oiu = 24	!Output file for data and info
-real(sp) :: startT, endT, execTime			!Program timer variables
-integer :: seed_size
-integer, allocatable :: seed(:)
-real(dp) :: u
-integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
+	use m0_utilities, &
+		only: i8, dp, read_input_parameters, open_output_files, &
+		write_simulation_status_information
+	use m1_electron_beam_model, &
+		only: electron_beam_parameters_unit_conversion, setup_electron_beam_model
+	use m2_dielectric_material_model, &
+		only: setup_simple_silica_model
+	use m3_trajectory_computation, &
+		only: number_of_iterations_estimation, compute_scattering_angles
+	use m4_optimized_trajectory_computation, &
+		only: compute_trajectory_optimized
+	implicit none
+	! m1_electron_beam_model module variables ************************************
+	integer(i8) :: num_electrons
+	real(dp) :: spot_size_factor
+	real(dp) :: beam_energy, energy_spread
+	real(dp) :: beam_target_distance, grazing_angle
+	real(dp), allocatable :: electron_positions(:,:), electron_velocities(:,:)
+	real(dp), allocatable :: electron_accelerations(:,:)
+	! m2_dielectric_material_model module variables ******************************
+	integer(i8) :: material_boundaries(3)
+	real(dp), allocatable :: atom_positions(:,:,:,:)
+	integer, allocatable :: atom_charges(:,:,:)
+	real(dp), allocatable :: atom_charges_cbrt(:,:,:)
+	! m3_trajectory_computation module variables *********************************
+	integer(i8) :: max_iterations
+	real(dp) :: alpha, beta
+	! m4_optimized_trajectory_computation variables ******************************
+	integer(i8) :: num_plot_ploints, partition_boundaries(3)
+	real(dp) :: dt, r(3), v(3), a(3)
+	integer(i8) :: num_embedded, num_scattered
+	integer(i8), allocatable :: num_super_electrons(:,:,:)
+	integer, allocatable :: super_electron_charges(:,:,:,:)
+	real(dp), allocatable :: super_electron_positions(:,:,:,:,:)
+	real(dp), allocatable :: embedded_positions(:,:), scattered_positions(:,:)
+	! Additional local variables *************************************************
+	integer(i8) :: i, j, k
+	real(dp) :: start_time, end_time, total_time
+	real(dp) :: iteration_start_time, iteration_end_time, iteration_time
+	integer(i8) :: previous_num_embedded, previous_num_scattered
+	integer, parameter :: output_unit = 7
+	integer :: seed_size
+	integer, allocatable :: seed(:)
 	
-	!SET RANDOM NUMBERS REPRODUCIBILITY*******************************************
+	! SEEDING RANDOM NUMBERS GENERATION FOR REPRODUCIBILITY **********************
 	call random_seed(size=seed_size)
 	allocate(seed(seed_size))
-	seed = 23466992! putting arbitrary seed to all elements
+	seed = 23466992! Arbitrary seed for all elements
 	call random_seed(put=seed)
 	deallocate(seed)
-!	!Test
-!	do i=1, 10
-!		call random_stduniform(u)
-!		print*, u
-!	end do
-!	print*, "Press Crtl+C"
-!	read*
-
-	!MS1 TEST: ELECTRON BEAM GENERATION*******************************************	
-	!Input parameters
-	N_eb = 150
-	E = 10	!keV
-	R_eb = 3*1.77 !Å, considering the width of the standard cuboid in scc is Nx*1.77
-	pd = 1 !Gaussian !4 Uniform distribution
-	call electron_beam(r, v, a, N_eb, E, R_eb, pd)
-	!e_pos, e_vel, e_acc, N_in, E_in, R_in, prob_dist_in
-	open(unit=11,file='haz.dat',status='unknown')
-		do i=1,size(r)/3
-			write(11,*) r(i,:), v(i,:), a(i,:), 0
-		end do
-
-		write(11,*)
-		write(11,*)
-		
-		!Input parameters
-		theta = 84!º
-		d0 = 80!Å
-		call trnsf_to_surf_ref_sys(r, v, a, theta_in=theta, d_in=d0)
-		!e_pos, e_vel, e_acc, theta_in, d_in
-		
-		do i=1,size(r)/3
-			write(11,*) r(i,:), v(i,:), a(i,:), 0
-		end do
-
-	close(11)
-
-	!UNCOMMENT/COMMENT TO SEE/HIDE PLOTS
-!	call system('gnuplot "haz.gp"')
-!	call system('gnuplot "vel.gp"')
-
-
-	!MS2 TEST: ATOMIC POSITIONS GENERATION****************************************
-
-	!FOR SIMPLE SILICA MODEL
-	!Input parameters
-	Nx = 4
-	Ny = 10
-	Nz = 75
-	d = 1.77!Å, sum of Silicon and Oxygen covalent radii
-	call simple_silica_model(ssm, Z, Nx, Ny, Nz, d)
 	
-	open(unit=11,file='ssm_Si.dat',status='unknown')
-	open(unit=12,file='ssm_O.dat',status='unknown')
+	! READING INPUT PARAMETERS FROM FILE *****************************************
+	call read_input_parameters &
+		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
+		beam_target_distance, grazing_angle, material_boundaries, &
+		num_plot_ploints, dt)
 	
-	do i = -Nx, Nx
-		do j = 0, -Ny, -1
-			do k = -Nz, Nz
-				if (Z(i,j,k) .eq. 14) write(11, *) ssm(i,j,k,:)
-				if (Z(i,j,k) .eq. 8) write(12, *) ssm(i,j,k,:)
-			end do
-		end do
+	! SETTING UP ELECTRON BEAM MODEL**********************************************
+	! Converting input parameters to the appropriate units
+	call electron_beam_parameters_unit_conversion &
+		(beam_energy, beam_target_distance, grazing_angle)
+	! Initializing electron beam model variables and arrays
+	call setup_electron_beam_model &
+		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
+		beam_target_distance, grazing_angle, electron_positions, &
+		electron_velocities, electron_accelerations)
+	
+	! SETTING UP DIELECTRIC MATERIAL MODEL ***************************************
+	call setup_simple_silica_model &
+		(material_boundaries, atom_positions, atom_charges, atom_charges_cbrt)
+	
+	! COMPUTING OPTIMIZED ELECTRON TRAJECTORIES **********************************
+	! Allocating and initializing embedded and scattered positions arrays
+	allocate(embedded_positions(num_electrons,3))
+	allocate(scattered_positions(num_electrons,3))
+	embedded_positions = 0
+	scattered_positions = 0
+	! Initializing number of embedded and scattered electrons
+	num_embedded = 0
+	num_scattered = 0
+	previous_num_embedded = 0
+	previous_num_scattered = 0
+	! Opening files to store the output results of the simulation
+	call open_output_files(output_unit)
+	!! Getting total simulation start time
+	call cpu_time(start_time)
+	! Computing the trajectories of each electron in the beam
+	do i = 1, num_electrons
+		print*, "Simulating", i, "out of", num_electrons, &
+		"electron trajectories (optimized)"
+		! Computing current iteration simulation time
+		call cpu_time(iteration_start_time)
+		! Getting current electron initial conditions
+		r = electron_positions(i,:)
+		v = electron_velocities(i,:)
+		a = electron_accelerations(i,:)
+		! Loose estimation of maximum number of iterations
+		call number_of_iterations_estimation &
+			(r, v, dt, max_iterations, num_plot_ploints)
+		! Computing current electron trajectory (optimized)
+		call compute_trajectory_optimized &
+			(num_plot_ploints, max_iterations, output_unit+1, material_boundaries, & 
+			atom_positions, atom_charges, atom_charges_cbrt, partition_boundaries, & 
+			num_super_electrons, super_electron_positions, super_electron_charges, & 
+			dt, r, v, a, num_embedded, num_scattered, embedded_positions, & 
+			scattered_positions)
+		! Writing empty lines for separation between trajectories in output file
+		write(output_unit+1, *)
+		write(output_unit+1, *)
+		! Updating number of embedded and scattered electrons and writing to files
+		! Case: Electron is embedded
+		if (num_embedded .gt. previous_num_embedded) then
+			previous_num_embedded = num_embedded
+			write(output_unit+2, *) i, embedded_positions(num_embedded,:)
+		! Case: Electron is scattered
+		else if (num_scattered .gt. previous_num_scattered) then
+			previous_num_scattered = num_scattered
+			write(output_unit+3, *) i, scattered_positions(num_scattered,:)
+			! Computing and writing scattering angles to file
+			call compute_scattering_angles &
+				(num_scattered, scattered_positions, alpha, beta)
+			write(output_unit+4, *) i, alpha, beta
+		end if
+		! Writing final electron position to file 
+		write(output_unit+5, *) i, r
+		! Writing electrons' accumulated final states to file
+		write(output_unit+6, *) i, num_embedded, num_scattered, &
+			real(num_embedded,dp)/i, real(num_scattered,dp)/i
+		! Computing current iteration time and simulation time thus far
+		call cpu_time(iteration_end_time)
+		iteration_time = iteration_end_time - iteration_start_time
+		total_time = iteration_end_time - start_time
+		! Writing iteration and total simulation times to file
+		write(output_unit+7, *) i, iteration_time, total_time
+		! Printing simulation information on console
+		print*, "  Number of electrons embedded: ", num_embedded
+		print*, "  Number of electrons scattered:", num_scattered
+		print*, "Iteration time:", iteration_time
+		print*, "Simulation time thus far:", total_time
+		! Writing simulation status information to output file
+		call write_simulation_status_information &
+			(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
 	end do
-
-	close(11)
-	close(12)
-
-	!Print to console charge positions
-!	do j = 0, -Ny, -1
-!		!print*, "LAYER:", j
-!		do i = -Nx, Nx
-!			!print*, Z(i,j,:)
-!			!print*
-!		end do
-!	end do
-	!read*
-
-	!PLOT THAT ONLY SHOWS SSM STRUCTURE 
-	!call system('gnuplot "ssm.gp"')
-!	print*, "Stopping point, Ctrl+C to end program"
-!	read*
-	
-	
-	!EMBEDDED AND SCATTERED ELECTRONS' POSITIONS ARRAYS
-	!Allocating and initializing embedded and scattered electron positions arrays
-	allocate(emb(N_eb,3))
-	allocate(sct(N_eb,3))
-	emb = 0
-	sct = 0
-
-
-	!MS3 TEST: TRAJECTORIES*******************************************************
-	!EMBEDDED EQUIVALENT ELECTRONS BINS*******************************************
-	FFd = 30!a0
-	!Setting bin size (distance) and computing its inverse for sort_electron
-	!subroutine (THIS IS ON MS3 trajectory_MM subroutine)
-	bin_size = 3	!MUST CHECK IF IT IS THE SAME VALUE IN MS3
-!	d_bin = bin_size*d
-!	d_bin_inv = 1/d_bin
-	!Computing bin boundary indices
-	!Since electrons can be embedded after crossing the material boundaries,
-	!I must consider an extra cubic bin into each direction into the material
-	Nxb = Nx/bin_size + 1
-	Nyb = Ny/bin_size + 1
-	Nzb = Nz/bin_size + 1
-	N_bins = (2*Nxb)*(Nyb)*(2*Nzb)
-	!Setting parameters that characterize each bin 
-	max_eq = 180 !Maximum possible equivalent charge, from tests the max is 182
-	max_neq = N_eb/max_eq + 1	!At most N_beam/max_eq + 1 equivalent electrons
-	!Allocating and initializing cubic bins arrays 
-	!Number of equivalent electrons present in each bin, between 0 and max_neq
-	!I must initialize bin_neq as zero, since there are no equivalent electrons yet
-	allocate(b_neq(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb))
-	b_neq = 0
-	!Equivalent charge of each equivalent electron of each bin, between 0 and max_eq
-	!I must initialize bin_ec as max_eq so that a new electron makes bin_neq equal to 1
-	allocate(b_ec(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq))
-	b_ec = 0
-	b_ec(:,:,:,0) = max_eq
-	!Equivalent (mean) position of each equivalent electron of each bin
-	!I initialize bin_er as zero so that the first equiv_pos is the position of that electron
-	allocate(b_er(-Nxb:Nxb,-Nyb:-1,-Nzb:Nzb,0:max_neq,3))
-	b_er = 0
-!	do i=-Nxb,Nxb
-!		do j=-1,-Nyb, -1
-!			do k=-Nzb,Nzb
-!				b_er(i,j,k,:,:) = 0! ¿No me da igual inicializar todo en 0? Why ",1)" before?
-!			end do
-!		end do
-!	end do
-	!Printing bins test information
-	print*, "Bin boundary indices"
-	print*, "Nxb:", Nxb
-	print*, "Nyb:", Nyb
-	print*, "Nzb:", Nzb
-	print*, "Number of bins:", N_bins
-	print*, "Interatomic distance (a0):", d
-!	print*, "Bin distance (a0)", d_bin, d_bin_inv
-	print*, "Boundaries"
-	print*, "Lx: +/-", Nx*d
-	print*, "Ly:    ", -Ny*d
-	print*, "Lz: +/-", Nz*d
-	
-	!Trajectory subroutine input parameters
-	P = 5000	!Number of points to be plotted
-!	Z = 14	!Atomic number of neutral atoms
-	dt = 1.d-5	!Time step size
-	l = 1/33.7465!SiO2 mean free using weighted scattering cross sections
-	print*, "l", l
-	print*, "Mean free path:", 1/l
-	Ne = 0	!Initially, zero electrons are embedded
-	Ns = 0	!Initially, zero electrons are scattered
-	Ne_p = 0
-	Ns_p = 0	
-	!Open file to write electron trajectories
-	open(unit=ou, file="beam_trajectories.dat", status='unknown')
-	!Open file to write final position of embedded electrons
-	open(unit=ou+1,file='emb.dat',status='unknown')
-	!Open file to write final position of scattered electrons
-	open(unit=ou+2,file='sct.dat',status='unknown')
-	!Open file to write final position of electrons in general
-	open(unit=ou+3,file='fep.dat',status='unknown')
-	!Open file to write scattered electrons angles
-	open(unit=ou+4,file='sea.dat',status='unknown')
-	!Open file to write time distribution of # of embedded and scattered electrons
-	open(unit=ou+5,file='td.dat',status='unknown')
-	!Simulation time start
-	call cpu_time(startT)
-		!Computing the trajectories of each electron in the beam
-		do i=1, N_eb
-			!Final time estimation
-			d0 = norm2(r(i,:))
-			a0 = 1._dp/(d0**2)	!Initial acceleration due to N_e electrons, in au
-			v0 = dsqrt(2*E)	!Initial speed taken from E, main energy of the beam, in au
-			tf = (-v0 + dsqrt(v0*v0 - 2*a0*d0))/a0
-			tf = -2*tf
-			!Estimated number of iterations
-			T = dint(tf/dt)
-
-			!Printing simulation info on console (1/2)
-			!print*, "Estimated number of iterations T:", T
-			!print*, "Number of points to be plotted P:", P
-			if (T .lt. P) P = T !Can't plot less points than the number of simulated ones
-			!print*, "Final estimated number of iterations T:", T
-			print*, "Simulating", i, "out of", N_eb, "electron trajectories"
-
-			!Computing i-th trajectory
-			!ONLY NEAR FIELD
-			!call trajectory_NF(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,d0,T,d,dt,l,r,v,a)
-			!THE FAR FIELD EFFECTIVE DISTANCE MUST ALWAYS BE GREATER THAN THE INTERATOMIC DISTANCE
-			if (FFd .lt. d) FFd = d
-			!USING MIX METHOD
-			call trajectory_opt(i,N_eb,P,ou,Ne,Ns,emb,sct,Nx,Ny,Nz,ssm,Z,Nxb,Nyb,Nzb,max_eq,max_neq,b_neq,b_ec,b_er,d0,FFd,T,d,dt,l,r,v,a)
-			write(ou,*)
-			write(ou,*)
-			!Write final electron positions to file 
-			if (Ne .gt. Ne_p) then
-				Ne_p = Ne
-				write(ou+1, *) emb(Ne,:), i
-			else if (Ns .gt. Ns_p) then
-				Ns_p = Ns
-				write(ou+2, *) sct(Ns,:), i
-				xs = sct(Ns,1)
-				ys = sct(Ns,2)
-				zs = sct(Ns,3)
-				s = dsqrt(xs**2 + zs**2)
-				alfa = datan2(ys,s)*180/PI
-				beta = -datan2(xs,zs)*180/PI
-				write(ou+4, *) alfa, beta, i
-			end if
-			write(ou+3, *) r(i,:), i
-			!Write time distribution of number of embedded and scattered electrons
-			write(ou+5,*) Ne, Ns, i, real(Ne,dp)/i, real(Ns,dp)/i
-
-			!Simulation time from beginning to this electron
-			call cpu_time(endT)
-			execTime = endT - startT
-			!Printing simulation info on console (2/2)
-			print*, "  Number of electrons embedded: ", Ne
-			print*, "  Number of electrons scattered:", Ns
-			print*, "Simulation time thus far:", execTime
-			!Writing simulation to file
-			open(unit=oiu,file='sim-info.dat',status='unknown')
-				write(oiu,*) i, "out of", N_eb, "electron trajectories simulated"
-				write(oiu,*) "  Number of electrons embedded: ", Ne
-				write(oiu,*) "  Number of electrons scattered:", Ns
-				write(oiu,*) "Simulation time thus far:", execTime
-			close(oiu)
-		end do
-	close(ou)
-	close(ou+1)
-	close(ou+2)
-	close(ou+3)
-	close(ou+4)
-	
-	call cpu_time(endT)
-	execTime = endT - startT
-	!SIMULATION END MESSAGES
-	!print*
+	! Closing files that stored the output results of the simulation
+	do i = 1, 7
+		close(output_unit+i)
+	end do
+	! Computing total simulation time
+	call cpu_time(end_time)
+	total_time = end_time - start_time
 	print*, "SIMULATION COMPLETE!"
-	print*, "Total simulation time:", execTime
-	open(unit=oiu,file='sim-info.dat',status='unknown')
-		write(oiu,*) "SIMULATION COMPLETE!"
-		write(oiu,*) "  Number of electrons embedded:", Ne
-		write(oiu,*) "  Number of electrons scattered:", Ns
-		write(oiu,*) "Total simulation time:", execTime
-	close(oiu)	
-	
-	!WRITE POSITION OF SIMULATED EMBEDDED ELECTRONS TO FILE
-!	open(unit=11,file='emb.dat',status='unknown')
-!	do i = 1, Ne
-!		write(11, *) emb(i,:)
-!	end do
-!	close(11)
-
-	!WRITE POSITION OF SIMULATED SCATTERED ELECTRONS TO FILE
-!	open(unit=11,file='sct.dat',status='unknown')
-!	do i = 1, Ns
-!		write(11, *) sct(i,:)
-!	end do
-!	close(11)
-
-	!PLOT THAT SHOWS SIMULATED EMBEDDED, SCATTERED ELECTRONS AND SCC STRUCTURE 	
-	!call system('gnuplot "particles.gp"')
-	
-	!PLOT THAT SHOWS ELECTRON TRAJECTORIES 	
-	!call system('gnuplot "beam_trajectories_zx.gp"')
-	!call system('gnuplot "beam_trajectories_zy.gp"')
-
-
-	if (allocated(r)) deallocate(r)
-	if (allocated(v)) deallocate(v)
-	if (allocated(a)) deallocate(a)
-	if (allocated(ssm)) deallocate(ssm)
-	if (allocated(Z)) deallocate(Z)
-	if (allocated(emb)) deallocate(emb)
-	if (allocated(sct)) deallocate(sct)
-	if (allocated(b_neq)) deallocate(b_neq)
-	if (allocated(b_ec)) deallocate(b_ec)
-	if (allocated(b_er)) deallocate(b_er)
+	print*, "  Number of electrons embedded: ", num_embedded
+	print*, "  Number of electrons scattered:", num_scattered
+	print*, "Total simulation time:", total_time
+	! Writing final simulation status information to output file
+	call write_simulation_status_information &
+		(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
+	! Deallocating allocatable arrays used
+	deallocate(electron_positions)
+	deallocate(electron_velocities)
+	deallocate(electron_accelerations)
+	deallocate(atom_positions)
+	deallocate(atom_charges)
+	deallocate(atom_charges_cbrt)
+	deallocate(embedded_positions)
+	deallocate(scattered_positions)
+	deallocate(num_super_electrons)
+	deallocate(super_electron_positions)
+	deallocate(super_electron_charges)
 
 end program

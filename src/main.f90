@@ -134,7 +134,7 @@ program main
 			(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
 	end do
 	! Closing files that stored the output results of the simulation
-	do i = 1, 6
+	do i = 1, 7
 		close(output_unit+i)
 	end do
 	! Computing total simulation time
