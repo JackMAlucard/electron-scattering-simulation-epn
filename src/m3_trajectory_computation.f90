@@ -72,6 +72,7 @@ module m3_trajectory_computation
 			psi = psi + aux
 		end do
 		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs
+!		a = -Z*( (chi/(r**3)) + ((psi*cbrt_Z*b0_inv)/(r**2)) )*rs
 	end subroutine acceleration_due_to_atom
 	
 	! TO BE EDITED
@@ -91,9 +92,13 @@ module m3_trajectory_computation
 		atom_charges, atom_charges_cbrt, dt, r, v, a)
 		implicit none
 		integer(i8), intent(in) :: num_embedded, material_boundaries(3)
-		real(dp), intent(in) :: embedded_positions(:,:), atom_positions(:,:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:)
-		real(dp), intent(in) :: atom_charges_cbrt(:,:,:)
+		real(dp), intent(in) :: embedded_positions(:,:)
+		real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+		integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
+		real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3), cbrt_Z
@@ -104,6 +109,8 @@ module m3_trajectory_computation
 		v = v + 0.5*a*dt
 		! Position update
 		r = r + v*dt
+!		r = r + v*dt + 0.5*a*dt*dt
+!		v = v + 0.5*a*dt
 		! Full-step acceleration update
 		a = 0
 		! Acceleration due to embedded electrons
@@ -123,11 +130,31 @@ module m3_trajectory_computation
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
+		print*, 'TEST PERSONALIZED INDEXES BOUNDARIES!'
+		print*, 'CHARGES BOUNDARIES', lbound(atom_charges, 1), ubound(atom_charges, 1), &
+		lbound(atom_charges, 2), ubound(atom_charges, 2), &
+		lbound(atom_charges, 3), ubound(atom_charges, 3)
+		print*, 'CHARGES_CBRT BOUNDARIES', lbound(atom_charges_cbrt, 1), &
+		ubound(atom_charges_cbrt, 1), lbound(atom_charges_cbrt, 2), &
+		ubound(atom_charges_cbrt, 2), lbound(atom_charges_cbrt, 3), &
+		ubound(atom_charges_cbrt, 3)
+		print*, 'POSITIONS BOUNDARIES', lbound(atom_positions, 1), &
+		ubound(atom_positions, 1), lbound(atom_positions, 2), &
+		ubound(atom_positions, 2), lbound(atom_positions, 3), ubound(atom_positions, 3)
+		read(*,*)
 			do i = -mbi, mbi
+			print*, "TEST i LOOP", i
 				do j = 0, -mbj, -1
+				print*, " TEST j LOOP", j
 					do k = -mbk, mbk
+					print*, " TEST k LOOP", k
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
+						print*, "  TEST charge Z", Z, Z .ne. 0
+!						cbrt_Z = atom_charges_cbrt(i,j,k)
+!						print*, "TEST charge_cbrt", cbrt_Z
+						rt = atom_positions(i,j,k,:)
+						print*, "  TEST position rt", rt
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
 							cbrt_Z = atom_charges_cbrt(i,j,k)
@@ -168,8 +195,12 @@ module m3_trajectory_computation
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer, intent(in) :: output_unit
 		integer(i8), intent(in) :: material_boundaries(3)
-		real(dp), intent(in) :: atom_positions(:,:,:,:), atom_charges_cbrt(:,:,:)
-		integer, intent(in) :: atom_charges(:,:,:)
+		real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+		integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
+		real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
@@ -182,6 +213,48 @@ module m3_trajectory_computation
 		real(dp) :: distance_to_target, t
 		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j
+			! TEST, GETTING TO THE BOTTOM OF IT
+	real(dp) :: rt(3), cbrt_Z
+	integer :: Z
+	integer(i8) :: ii, jj, kk
+		! TEST, GETTING TO THE BOTTOM OF IT
+	mbi = material_boundaries(1)
+	mbj = material_boundaries(2)
+	mbk = material_boundaries(3)
+	print*, 'TEST PERSONALIZED INDEXES BOUNDARIES!'
+		print*, 'CHARGES BOUNDARIES', lbound(atom_charges, 1), ubound(atom_charges, 1), &
+		lbound(atom_charges, 2), ubound(atom_charges, 2), &
+		lbound(atom_charges, 3), ubound(atom_charges, 3)
+		print*, 'CHARGES_CBRT BOUNDARIES', lbound(atom_charges_cbrt, 1), &
+		ubound(atom_charges_cbrt, 1), lbound(atom_charges_cbrt, 2), &
+		ubound(atom_charges_cbrt, 2), lbound(atom_charges_cbrt, 3), &
+		ubound(atom_charges_cbrt, 3)
+		print*, 'POSITIONS BOUNDARIES', lbound(atom_positions, 1), &
+		ubound(atom_positions, 1), lbound(atom_positions, 2), &
+		ubound(atom_positions, 2), lbound(atom_positions, 3), ubound(atom_positions, 3)
+		read(*,*)
+	do ii = -mbi, mbi
+!			print*, "TEST i LOOP", ii
+				do jj = 0, -mbj, -1
+!				print*, " TEST j LOOP", jj
+					do kk = -mbk, mbk
+!					print*, " TEST k LOOP", kk
+						!Only compute acceleration in positions with atoms
+						Z = atom_charges(ii,jj,kk)
+!						print*, "  TEST charge Z", Z, Z .ne. 0
+						cbrt_Z = atom_charges_cbrt(ii,jj,kk)
+!						print*, "TEST charge_cbrt", cbrt_Z
+						rt = atom_positions(ii,jj,kk,:)
+!						print*, "  TEST position rt", rt
+						if (Z .eq. 0) then
+!							print*, ii, jj, kk
+						end if
+						print*, ii, jj, kk, Z, cbrt_Z, rt
+					end do
+				end do
+			end do
+	print*, "TEST SUCCESS!"
+	read(*,*)
 		! Initializing end conditions as false
 		is_embedded = .false.
 		is_scattered = .false.
