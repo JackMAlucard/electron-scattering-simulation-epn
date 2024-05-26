@@ -183,6 +183,9 @@ module m0_utilities
 		! Open file to write the time evolution of the electrons' final state
 		open(unit=output_unit+6, file='final_state_evolution.dat', &
 			status='replace', action='write')
+		! Open file to write the iteration and total simulation times
+		open(unit=output_unit+7, file='simulation_times.dat', &
+			status='replace', action='write')
 	end subroutine open_output_files
 	
 	! Subroutine that writes the status of the simulation of after each 

@@ -31,6 +31,7 @@ program main
 	! Additional local variables *************************************************
 	integer(i8) :: i, j, k
 	real(dp) :: start_time, end_time, total_time
+	real(dp) :: iteration_start_time, iteration_end_time, iteration_time
 	integer(i8) :: previous_num_embedded, previous_num_scattered
 	integer, parameter :: output_unit = 7
 	integer :: seed_size
@@ -76,11 +77,13 @@ program main
 	previous_num_scattered = 0
 	! Opening files to store the output results of the simulation
 	call open_output_files(output_unit)
-	! Getting simulation start time
+	! Getting total simulation start time
 	call cpu_time(start_time)
 	! Computing the trajectories of each electron in the beam
 	do i = 1, num_electrons
 		print*, "Simulating", i, "out of", num_electrons, "electron trajectories"
+		! Computing current iteration simulation time
+		call cpu_time(iteration_start_time)
 		! Getting current electron initial conditions
 		r = electron_positions(i,:)
 		v = electron_velocities(i,:)
@@ -110,17 +113,21 @@ program main
 				(num_scattered, scattered_positions, alpha, beta)
 			write(output_unit+4, *) i, alpha, beta
 		end if
-		! Writing final electron position to file 
+		! Writing final electron position to file
 		write(output_unit+5, *) i, r
 		! Writing electrons' accumulated final states to file
 		write(output_unit+6, *) i, num_embedded, num_scattered, &
 			real(num_embedded,dp)/i, real(num_scattered,dp)/i
-		! Computing simulation time up to current electron
-		call cpu_time(end_time)
-		total_time = end_time - start_time
+		! Computing current iteration time and simulation time thus far
+		call cpu_time(iteration_end_time)
+		iteration_time = iteration_end_time - iteration_start_time
+		total_time = iteration_end_time - start_time
+		! Writing iteration and total simulation times to file
+		write(output_unit+7, *) i, iteration_time, total_time
 		! Printing simulation information on console
 		print*, "  Number of electrons embedded: ", num_embedded
 		print*, "  Number of electrons scattered:", num_scattered
+		print*, "Iteration time:", iteration_time
 		print*, "Simulation time thus far:", total_time
 		! Writing simulation status information to output file
 		call write_simulation_status_information &
