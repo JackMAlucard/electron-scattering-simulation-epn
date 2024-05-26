@@ -130,31 +130,11 @@ module m3_trajectory_computation
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-		print*, 'TEST PERSONALIZED INDEXES BOUNDARIES!'
-		print*, 'CHARGES BOUNDARIES', lbound(atom_charges, 1), ubound(atom_charges, 1), &
-		lbound(atom_charges, 2), ubound(atom_charges, 2), &
-		lbound(atom_charges, 3), ubound(atom_charges, 3)
-		print*, 'CHARGES_CBRT BOUNDARIES', lbound(atom_charges_cbrt, 1), &
-		ubound(atom_charges_cbrt, 1), lbound(atom_charges_cbrt, 2), &
-		ubound(atom_charges_cbrt, 2), lbound(atom_charges_cbrt, 3), &
-		ubound(atom_charges_cbrt, 3)
-		print*, 'POSITIONS BOUNDARIES', lbound(atom_positions, 1), &
-		ubound(atom_positions, 1), lbound(atom_positions, 2), &
-		ubound(atom_positions, 2), lbound(atom_positions, 3), ubound(atom_positions, 3)
-		read(*,*)
 			do i = -mbi, mbi
-			print*, "TEST i LOOP", i
 				do j = 0, -mbj, -1
-				print*, " TEST j LOOP", j
 					do k = -mbk, mbk
-					print*, " TEST k LOOP", k
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
-						print*, "  TEST charge Z", Z, Z .ne. 0
-!						cbrt_Z = atom_charges_cbrt(i,j,k)
-!						print*, "TEST charge_cbrt", cbrt_Z
-						rt = atom_positions(i,j,k,:)
-						print*, "  TEST position rt", rt
 						if (Z .ne. 0) then
 							rt = atom_positions(i,j,k,:)
 							cbrt_Z = atom_charges_cbrt(i,j,k)
@@ -213,48 +193,6 @@ module m3_trajectory_computation
 		real(dp) :: distance_to_target, t
 		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j
-			! TEST, GETTING TO THE BOTTOM OF IT
-	real(dp) :: rt(3), cbrt_Z
-	integer :: Z
-	integer(i8) :: ii, jj, kk
-		! TEST, GETTING TO THE BOTTOM OF IT
-	mbi = material_boundaries(1)
-	mbj = material_boundaries(2)
-	mbk = material_boundaries(3)
-	print*, 'TEST PERSONALIZED INDEXES BOUNDARIES!'
-		print*, 'CHARGES BOUNDARIES', lbound(atom_charges, 1), ubound(atom_charges, 1), &
-		lbound(atom_charges, 2), ubound(atom_charges, 2), &
-		lbound(atom_charges, 3), ubound(atom_charges, 3)
-		print*, 'CHARGES_CBRT BOUNDARIES', lbound(atom_charges_cbrt, 1), &
-		ubound(atom_charges_cbrt, 1), lbound(atom_charges_cbrt, 2), &
-		ubound(atom_charges_cbrt, 2), lbound(atom_charges_cbrt, 3), &
-		ubound(atom_charges_cbrt, 3)
-		print*, 'POSITIONS BOUNDARIES', lbound(atom_positions, 1), &
-		ubound(atom_positions, 1), lbound(atom_positions, 2), &
-		ubound(atom_positions, 2), lbound(atom_positions, 3), ubound(atom_positions, 3)
-		read(*,*)
-	do ii = -mbi, mbi
-!			print*, "TEST i LOOP", ii
-				do jj = 0, -mbj, -1
-!				print*, " TEST j LOOP", jj
-					do kk = -mbk, mbk
-!					print*, " TEST k LOOP", kk
-						!Only compute acceleration in positions with atoms
-						Z = atom_charges(ii,jj,kk)
-!						print*, "  TEST charge Z", Z, Z .ne. 0
-						cbrt_Z = atom_charges_cbrt(ii,jj,kk)
-!						print*, "TEST charge_cbrt", cbrt_Z
-						rt = atom_positions(ii,jj,kk,:)
-!						print*, "  TEST position rt", rt
-						if (Z .eq. 0) then
-!							print*, ii, jj, kk
-						end if
-						print*, ii, jj, kk, Z, cbrt_Z, rt
-					end do
-				end do
-			end do
-	print*, "TEST SUCCESS!"
-	read(*,*)
 		! Initializing end conditions as false
 		is_embedded = .false.
 		is_scattered = .false.

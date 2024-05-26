@@ -35,10 +35,6 @@ program main
 	integer, parameter :: output_unit = 7
 	integer :: seed_size
 	integer, allocatable :: seed(:)
-	! TEST, GETTING TO THE BOTTOM OF IT
-!	real(dp) :: rt(3), cbrt_Z
-!	integer :: Z
-	integer(i8) :: mbi, mbj, mbk, ii, jj, kk
 	
 	! SEEDING RANDOM NUMBERS GENERATION FOR REPRODUCIBILITY **********************
 	call random_seed(size=seed_size)
@@ -92,43 +88,6 @@ program main
 		! Loose estimation of maximum number of iterations
 		call number_of_iterations_estimation &
 			(r, v, dt, max_iterations, num_plot_ploints)
-		! TEST, GETTING TO THE BOTTOM OF IT
-	mbi = material_boundaries(1)
-	mbj = material_boundaries(2)
-	mbk = material_boundaries(3)
-	print*, 'TEST PERSONALIZED INDEXES BOUNDARIES!'
-		print*, 'CHARGES BOUNDARIES', lbound(atom_charges, 1), ubound(atom_charges, 1), &
-		lbound(atom_charges, 2), ubound(atom_charges, 2), &
-		lbound(atom_charges, 3), ubound(atom_charges, 3)
-		print*, 'CHARGES_CBRT BOUNDARIES', lbound(atom_charges_cbrt, 1), &
-		ubound(atom_charges_cbrt, 1), lbound(atom_charges_cbrt, 2), &
-		ubound(atom_charges_cbrt, 2), lbound(atom_charges_cbrt, 3), &
-		ubound(atom_charges_cbrt, 3)
-		print*, 'POSITIONS BOUNDARIES', lbound(atom_positions, 1), &
-		ubound(atom_positions, 1), lbound(atom_positions, 2), &
-		ubound(atom_positions, 2), lbound(atom_positions, 3), ubound(atom_positions, 3)
-!	do ii = -mbi, mbi
-!!			print*, "TEST i LOOP", ii
-!				do jj = 0, -mbj, -1
-!!				print*, " TEST j LOOP", jj
-!					do kk = -mbk, mbk
-!!					print*, " TEST k LOOP", kk
-!						!Only compute acceleration in positions with atoms
-!						Z = atom_charges(ii,jj,kk)
-!!						print*, "  TEST charge Z", Z, Z .ne. 0
-!						cbrt_Z = atom_charges_cbrt(ii,jj,kk)
-!!						print*, "TEST charge_cbrt", cbrt_Z
-!						rt = atom_positions(ii,jj,kk,:)
-!!						print*, "  TEST position rt", rt
-!						if (Z .eq. 0) then
-!!							print*, ii, jj, kk
-!						end if
-!						print*, ii, jj, kk, Z, cbrt_Z, rt
-!					end do
-!				end do
-!			end do
-!	print*, "TEST SUCCESS!"
-	read(*,*)
 		! Computing current electron trajectory
 		call compute_trajectory &
 			(num_plot_ploints, max_iterations, output_unit+1, material_boundaries, & 
