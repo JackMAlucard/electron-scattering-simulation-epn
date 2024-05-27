@@ -68,7 +68,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 	!Input parameters
 	N_eb = 5000
 	E = 8	!keV
-	R_eb = 3*1.77 !Å, considering the width of the standard cuboid in scc is Nx*1.77
+	R_eb = 1.5*1.77 !Å, considering the width of the standard cuboid in scc is Nx*1.77
 	pd = 1 !Gaussian !4 Uniform distribution
 	call electron_beam(r, v, a, N_eb, E, R_eb, pd)
 	!e_pos, e_vel, e_acc, N_in, E_in, R_in, prob_dist_in
@@ -82,7 +82,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 		
 		!Input parameters
 		theta = 84!º
-		d0 = 84!Å
+		d0 = 80!Å
 		call trnsf_to_surf_ref_sys(r, v, a, theta_in=theta, d_in=d0)
 		!e_pos, e_vel, e_acc, theta_in, d_in
 		
@@ -101,9 +101,9 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 	!FOR SIMPLE SILICA MODEL
 	!Input parameters
-	Nx = 30
-	Ny = 30
-	Nz = 75
+	Nx = 3
+	Ny = 3
+	Nz = 10
 	d = 1.77!Å, sum of Silicon and Oxygen covalent radii
 	call simple_silica_model(ssm, Z, Nx, Ny, Nz, d)
 	
@@ -147,7 +147,7 @@ integer(i8) :: Ne_p, Ns_p	!Count of embedded or scattered electrons to plot
 
 
 	!MS3 TEST: TRAJECTORIES*******************************************************
-	print*, "Interatomic distance (a0):", d
+	print*, "Interatomic distance (a0):", d/0.5291772
 !	print*, "Bin distance (a0)", d_bin, d_bin_inv
 	print*, "Boundaries"
 	print*, "Lx: +/-", Nx*d
