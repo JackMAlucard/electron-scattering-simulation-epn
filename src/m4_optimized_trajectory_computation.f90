@@ -149,27 +149,28 @@ module m4_optimized_trajectory_computation
 		call get_cell_indexes(r, partition_boundaries, cell_indexes)
 		i = cell_indexes(1)
 		j = cell_indexes(2)
-		k = cell_indexes(3)		
-		! Getting number of super electrons in the cell
+		k = cell_indexes(3)
+		! Get number of super electrons in the cell
 		n = num_super_electrons(i,j,k)
-		! Getting current super electron charge
-		super_electron_charge = super_electron_charges(i,j,k,n)
-		! Getting current super electron position
-		super_electron_r = super_electron_positions(i,j,k,n,:)
 		! If there are no embedded electrons in the cell, yet,
 		! i.e. no super electrons yet in the cell
 		if (n .eq. 0) then
 			! Updating super electrons arrays initializing the first one 
-			num_super_electrons(i,j,k) = 1
+			n = 1
+			num_super_electrons(i,j,k) = n
 			super_electron_charges(i,j,k,n) = 1
 			super_electron_positions(i,j,k,n,:) = r
 		! If current super electron is not full of charge, add extra charge
 		! and compute new super electron position
 		else if (super_electron_charge .lt. MAX_EQUIVALENT_CHARGE) then
+			! Read current super electron charge and position
+			super_electron_charge = super_electron_charges(i,j,k,n)
+			super_electron_r = super_electron_positions(i,j,k,n,:)
+			! Compute new super electron charge and position
 			super_electron_charge = super_electron_charge + 1
 			super_electron_r = &
 			super_electron_r + (r - super_electron_r)/super_electron_charge
-			! Updating super electron arrays after adding a new embedded electron
+			! Update super electron charge and position
 			super_electron_charges(i,j,k,n) = super_electron_charge
 			super_electron_positions(i,j,k,n,:) = super_electron_r
 		! If current super electron is full of charge, initialize next one
@@ -190,7 +191,7 @@ module m4_optimized_trajectory_computation
 		print*, " New super electron charge:", super_electron_charge
 		print*, " New super electron position:", super_electron_r
 	end subroutine update_super_electron_in_cell
-
+	
 	! Acceleration of a projectile electron interacting with an embedded 
 	! super electron of charge q via the electrostatic Coulomb potential. 
 	! The input and output variables are in atomic units (au).
