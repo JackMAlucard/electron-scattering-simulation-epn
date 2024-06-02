@@ -3,7 +3,20 @@ module m2_dielectric_material_model
 		only: dp, i8, INTERATOMIC_DIST_SIO2
 	implicit none
 	contains
-
+	!=======================================================================
+	! Subroutine: setup_simple_silica_model
+	! Purpose   : Setup a simple silica model by generating atom positions 
+	!             and charges within the specified material boundaries.
+	! Arguments :
+	!   - integer(i8), intent(in) :: material_boundaries(3)
+	!       Array containing the material grid boundaries in three dimensions.
+	!   - real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
+	!       Array to store the positions of the atoms.
+	!   - integer, allocatable, intent(out) :: atom_charges(:,:,:)
+	!       Array to store the charges of the atoms.
+	!   - real(dp), allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
+	!       Array to store the cubic root of the charges of the atoms.
+	!=======================================================================
 	! Subroutine that sets up a simple model for SiO2
 	! This subroutine takes as input three integers stored in the 
 	! "grid_boundaries" array and generates the "grid_points" and "grid_charges"

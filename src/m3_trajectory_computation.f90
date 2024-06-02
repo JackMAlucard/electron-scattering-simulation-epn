@@ -4,7 +4,25 @@ module m3_trajectory_computation
 		random_exponential
 	implicit none
 	contains
-	
+	!=======================================================================
+	! Subroutine: number_of_iterations_estimation
+	! Purpose   : Estimate the maximum number of iterations needed for 
+	!             simulating electron trajectories based on initial 
+	!             position, velocity, time step size, and the maximum 
+	!             number of points to be plotted.
+	! Arguments :
+	!   - real(dp), intent(in) :: r(3)
+	!       Initial position vector of the electron.
+	!   - real(dp), intent(in) :: v(3)
+	!       Initial velocity vector of the electron.
+	!   - real(dp), intent(in) :: dt
+	!       Time step size used in the simulation.
+	!   - integer(i8), intent(out) :: max_iterations
+	!       Maximum number of iterations estimated for the simulation.
+	!   - integer(i8), intent(inout) :: num_plot_ploints
+	!       Maximum number of points to be plotted. Modified to match or 
+	!       reduce based on the estimated maximum iterations.
+	!=======================================================================
 	subroutine number_of_iterations_estimation &
 		(r, v, dt, max_iterations, num_plot_ploints)
 		implicit none
@@ -22,7 +40,22 @@ module m3_trajectory_computation
 		! number of iterations is less than this number  
 		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
 	end subroutine number_of_iterations_estimation
-	
+	!=======================================================================
+	! Subroutine: acceleration_due_to_electron
+	! Purpose   : Calculate the acceleration vector experienced by an electron
+	!             due to the presence of another electron, based on their 
+	!             positions.
+	! Arguments :
+	!   - real(dp), intent(in) :: rp(3)
+	!       Position vector of the electron whose acceleration is being 
+	!       calculated.
+	!   - real(dp), intent(in) :: rt(3)
+	!       Position vector of the other electron influencing the 
+	!       acceleration.
+	!   - real(dp), intent(out) :: a(3)
+	!       Acceleration vector experienced by the electron at position rp 
+	!       due to the influence of the other electron at position rt.
+	!=======================================================================
 	! Acceleration of a projectile Electron interacting with a stationary target 
 	! Electron via the electrostatic Coulomb potential. 
 	! The input and output variables are in the atomic unit system (au).
@@ -38,7 +71,25 @@ module m3_trajectory_computation
 		r = norm2(rs)
 		a = rs/(r**3)
 	end subroutine acceleration_due_to_electron
-
+	!=======================================================================
+	! Subroutine: acceleration_due_to_atom
+	! Purpose   : Calculate the acceleration vector experienced by an electron
+	!             due to the presence of an atom, based on their positions 
+	!             and the atom's charge.
+	! Arguments :
+	!   - real(dp), intent(in) :: rp(3)
+	!       Position vector of the electron whose acceleration is being 
+	!       calculated.
+	!   - real(dp), intent(in) :: rt(3)
+	!       Position vector of the atom influencing the acceleration.
+	!   - integer, intent(in) :: Z
+	!       Charge of the atom.
+	!   - real(dp), intent(in) :: cbrt_Z
+	!       Cubic root of the atom's charge.
+	!   - real(dp), intent(out) :: a(3)
+	!       Acceleration vector experienced by the electron at position rp 
+	!       due to the influence of the atom at position rt.
+	!=======================================================================
 	! Acceleration of a projectile Electron interacting with a stationary neutral 
 	! Atom of atomic number Z via the electrostatic Thomas-Fermi potential.
 	! The input and output are in atomic units system (au).
@@ -85,6 +136,33 @@ module m3_trajectory_computation
 	! i.e. its height is less than half the interatomic distance and lower.
 	! CONSIDER GIVING THIS ONE AN ADJECTIVE
 	! subroutine time_step(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
+	!=======================================================================
+	! Subroutine: time_step
+	! Purpose   : Perform a time step update for the electron's position and
+	!             velocity based on the current acceleration and the 
+	!             surrounding environment.
+	! Arguments :
+	!   - integer(i8), intent(in) :: num_embedded
+	!       Number of embedded electrons.
+	!   - integer(i8), intent(in) :: material_boundaries(3)
+	!       Material grid boundaries in three dimensions.
+	!   - real(dp), intent(in) :: embedded_positions(:,:)
+	!       Array containing the positions of embedded electrons.
+	!   - real(dp), intent(in) :: atom_positions(:,:,:,:)
+	!       Array containing the positions of material atoms.
+	!   - integer, intent(in) :: atom_charges(:,:,:)
+	!       Array containing the charges of material atoms.
+	!   - real(dp), intent(in) :: atom_charges_cbrt(:,:,:)
+	!       Array containing the cubic roots of charges of material atoms.
+	!   - real(dp), intent(in) :: dt
+	!       Time step size for the simulation.
+	!   - real(dp), intent(inout) :: r(3)
+	!       Position vector of the electron. Updated after the time step.
+	!   - real(dp), intent(inout) :: v(3)
+	!       Velocity vector of the electron. Updated after the time step.
+	!   - real(dp), intent(inout) :: a(3)
+	!       Acceleration vector of the electron. Updated after the time step.
+	!=======================================================================
 	subroutine time_step &
 		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
 		atom_charges, atom_charges_cbrt, dt, r, v, a)
@@ -144,7 +222,45 @@ module m3_trajectory_computation
 		! Second half-step velocity update
 		v = v + 0.5*a*dt
 	end subroutine time_step
-
+	!=======================================================================
+	! Subroutine: compute_trajectory
+	! Purpose   : Simulate the trajectory of an electron through the material
+	!             environment, considering interactions with material atoms,
+	!             and embedded and scattered electrons.
+	! Arguments :
+	!   - integer(i8), intent(in) :: num_plot_ploints
+	!       Maximum number of points to be plotted.
+	!   - integer(i8), intent(in) :: max_iterations
+	!       Maximum number of iterations for the simulation.
+	!   - integer, intent(in) :: output_unit
+	!       Unit number for the output files.
+	!   - integer(i8), intent(in) :: material_boundaries(3)
+	!       Material grid boundaries in three dimensions.
+	!   - real(dp), intent(in) :: atom_positions(:,:,:,:)
+	!       Array containing the positions of material atoms.
+	!   - integer, intent(in) :: atom_charges(:,:,:)
+	!       Array containing the charges of material atoms.
+	!   - real(dp), intent(in) :: atom_charges_cbrt(:,:,:)
+	!       Array containing the cubic roots of charges of material atoms.
+	!   - real(dp), intent(in) :: dt
+	!       Time step size for the simulation.
+	!   - real(dp), intent(inout) :: r(3)
+	!       Position vector of the electron. Updated during the simulation.
+	!   - real(dp), intent(inout) :: v(3)
+	!       Velocity vector of the electron. Updated during the simulation.
+	!   - real(dp), intent(inout) :: a(3)
+	!       Acceleration vector of the electron. Updated during the simulation.
+	!   - integer(i8), intent(inout) :: num_embedded
+	!       Number of embedded electrons. Updated during the simulation.
+	!   - integer(i8), intent(inout) :: num_scattered
+	!       Number of scattered electrons. Updated during the simulation.
+	!   - real(dp), intent(inout) :: embedded_positions(:,:)
+	!       Array containing the positions of embedded electrons. Updated 
+	!       during the simulation.
+	!   - real(dp), intent(inout) :: scattered_positions(:,:)
+	!       Array containing the positions of scattered electrons. Updated 
+	!       during the simulation.
+	!=======================================================================
 	! Subroutine which computes the trajectory of the i-th projectile electron, out
 	! of N electrons in the electron beam, and plots P points in unit file number ou.
 	! This subroutine uses the Near Field Regimen, i.e. computes the field of each
@@ -280,7 +396,25 @@ module m3_trajectory_computation
 			end if
 		end do
 	end subroutine compute_trajectory
-	
+	!=======================================================================
+	! Subroutine: compute_scattering_angles
+	! Purpose   : Compute the scattering angles alpha and beta of the last
+	!             scattered electron based on its final position.
+	! Arguments :
+	!   - integer(i8), intent(in) :: num_scattered
+	!       Number of scattered electrons.
+	!   - real(dp), intent(in) :: scattered_positions(:,:)
+	!       Array containing the positions of scattered electrons.
+	!   - real(dp), intent(out) :: alpha
+	!       Computed scattering angle alpha (degrees).
+	!   - real(dp), intent(out) :: beta
+	!       Computed scattering angle beta (degrees).
+	! Variables :
+	!   - real(dp) :: x, y, z
+	!       Coordinates of the last scattered electron.
+	!   - real(dp) :: s
+	!       Distance in the xz-plane from the origin to the last scattered electron.
+	!=======================================================================
 	! Computing and writing scattering angles to file
 	subroutine compute_scattering_angles &
 		(num_scattered, scattered_positions, alpha, beta)

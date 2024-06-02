@@ -5,7 +5,23 @@ module m1_electron_beam_model
 		rotation_about_x_axis
 	implicit none
 	contains
-	
+	!=======================================================================
+	! Subroutine: electron_beam_parameters_unit_conversion
+	! Purpose   : Convert electron beam parameters from their original units 
+	!             to atomic units for use in the simulation.
+	! Arguments :
+	!   - real(dp), intent(inout) :: beam_energy
+	!       The energy of the electron beam. On input, it should be in 
+	!       kilo-electron volts (keV). On output, it will be converted to 
+	!       atomic units (Hartrees).
+	!   - real(dp), intent(inout) :: beam_target_distance
+	!       The distance from the electron beam source to the target 
+	!       material surface. On input, it should be in Angstroms (Å). 
+	!       On output, it will be converted to atomic units (Bohr radius).
+	!   - real(dp), intent(inout) :: grazing_angle
+	!       The grazing angle of the electron beam. On input, it should be 
+	!       in degrees. On output, it will be converted to radians.
+	!=======================================================================
 	subroutine electron_beam_parameters_unit_conversion &
 		(beam_energy, beam_target_distance, grazing_angle)
 		implicit none
@@ -15,7 +31,32 @@ module m1_electron_beam_model
 		call angstrom_to_atomic_distance_conversion(beam_target_distance)
 		grazing_angle = grazing_angle*PI/180
 	end subroutine electron_beam_parameters_unit_conversion
-
+	!=======================================================================
+	! Subroutine: setup_electron_beam_model
+	! Purpose   : Setup the electron beam model by generating initial 
+	!             positions, velocities, and accelerations for the 
+	!             electrons.
+	! Arguments :
+	!   - integer(i8), intent(in) :: num_electrons
+	!       Number of electrons in the beam.
+	!   - real(dp), intent(in) :: spot_size_factor
+	!       Factor determining the spot size of the electron beam.
+	!   - real(dp), intent(in) :: beam_energy
+	!       Energy of the electron beam in kilo-electron volts (keV).
+	!   - real(dp), intent(in) :: energy_spread
+	!       Energy spread of the electron beam in percentage.
+	!   - real(dp), intent(in) :: beam_target_distance
+	!       Distance from the electron beam source to the target material 
+	!       surface in Angstroms (Å).
+	!   - real(dp), intent(in) :: grazing_angle
+	!       Grazing angle of the electron beam in degrees (º).
+	!   - real(dp), allocatable, intent(out) :: electron_positions(:,:)
+	!       Array to store the initial positions of the electrons.
+	!   - real(dp), allocatable, intent(out) :: electron_velocities(:,:)
+	!       Array to store the initial velocities of the electrons.
+	!   - real(dp), allocatable, intent(out) :: electron_accelerations(:,:)
+	!       Array to store the initial accelerations of the electrons.
+	!=======================================================================
 	! Subroutine which generates an array with N electron random starting positions
 	! following a normal distribution whose Full Width at Tenth Maximum (FWTM) 
 	! represents the spot size (beam diameter) of the beam.
