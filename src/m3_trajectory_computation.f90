@@ -1,7 +1,7 @@
 module m3_trajectory_computation
 	use m0_utilities, &
-		only: dp, i8, PI, MATERIAL_HEIGHT_SIO2, CROSS_SECTION_SIO2, &
-		random_exponential
+		only: dp, i8, PI, INTERATOMIC_DIST_SIO2_INV, MATERIAL_HEIGHT_SIO2, & 
+		CROSS_SECTION_SIO2, random_exponential
 	implicit none
 	contains
 	!=======================================================================
@@ -40,6 +40,57 @@ module m3_trajectory_computation
 		! number of iterations is less than this number  
 		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
 	end subroutine number_of_iterations_estimation
+	!=======================================================================
+	! Subroutine: get_nearby_atom_indexes
+	! Purpose   : Determine the indexes of the nearest atom in a silica 
+	!             material grid relative to a projectile electron's position.
+	! Arguments :
+	!   - real(dp), intent(in) :: r(3)
+	!       Position of the projectile electron.
+	!   - integer(i8), intent(in) :: material_boundaries(3)
+	!       Boundaries of the material grid.
+	!   - integer(i8), intent(out) :: atom_indexes(3)
+	!       Indexes of the nearest atom in the material grid.
+	! Variables :
+	!   - integer(i8) :: mbi, mbj, mbk
+	!       Boundaries of the material grid in each dimension.
+	!   - integer(i8) :: i, j, k
+	!       Calculated indexes in each dimension.
+	!=======================================================================
+	! Subroutine that takes the position of a projectile electron in 
+	! the material zone and outputs the indexes to a nearby material atom.
+	subroutine get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
+		implicit none
+		real(dp), intent(in) :: r(3)	! Projectile electron position
+		integer(i8), intent(in) :: material_boundaries(3)
+		integer(i8), intent(out) :: atom_indexes(3)
+		integer(i8) :: mbi, mbj, mbk, i, j, k
+		! Getting material grid boundaries
+		mbi = material_boundaries(1)
+		mbj = material_boundaries(2)
+		mbk = material_boundaries(3)
+		if (r(1) .ge. 0) then
+			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) + 1
+			if (i .gt. mbi) i = mbi
+		else
+			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (i .lt. -mbi) i = -mbi
+		end if
+		if (r(2) .ge. 0) then
+			j = 0
+		else
+			j = dint(r(2)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (j .lt. -mbj) j = -mbj
+		end if
+		if (r(3) .ge. 0) then
+			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) + 1
+			if (k .gt. mbk) k = mbk
+		else
+			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) - 1
+			if (k .lt. -mbk) k = -mbk
+		end if
+		atom_indexes = (/i, j, k/)
+	end subroutine get_nearby_atom_indexes
 	!=======================================================================
 	! Subroutine: acceleration_due_to_electron
 	! Purpose   : Calculate the acceleration vector experienced by an electron
@@ -123,19 +174,6 @@ module m3_trajectory_computation
 		end do
 		a = -(Z/r**3)*(chi + psi*b0_inv*cbrt_Z*r)*rs
 	end subroutine acceleration_due_to_atom
-	
-	! TO BE EDITED
-	! Subroutine which computes a time step of the Velocity Verlet algorithm
-	! used to compute the trajectory of a projectile electron interacting with N_e
-	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
-	! bulk of N_a=(2*mbi + 1)*(mbj + 1)*(2*mbk + 1) neutral atoms with atomic number Z.
-	! The position of the embedded electrons is stored in the array e_emb(N_et,3).
-	! Acceleration due to embedded electrons is computed for EVERY embedded electron
-	! and ONLY if there is AT LEAST one embedded electron.
-	! Acceleration due to neutral atoms is ONLY computed if near the material zone, 
-	! i.e. its height is less than half the interatomic distance and lower.
-	! CONSIDER GIVING THIS ONE AN ADJECTIVE
-	! subroutine time_step(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
 	!=======================================================================
 	! Subroutine: time_step
 	! Purpose   : Perform a time step update for the electron's position and
@@ -163,6 +201,76 @@ module m3_trajectory_computation
 	!   - real(dp), intent(inout) :: a(3)
 	!       Acceleration vector of the electron. Updated after the time step.
 	!=======================================================================
+	! TO BE EDITED (original)
+	! Subroutine which computes a time step of the Velocity Verlet algorithm
+	! used to compute the trajectory of a projectile electron interacting with N_e
+	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
+	! bulk of N_a=(2*mbi + 1)*(mbj + 1)*(2*mbk + 1) neutral atoms with atomic number Z.
+	! The position of the embedded electrons is stored in the array e_emb(N_et,3).
+	! Acceleration due to embedded electrons is computed for EVERY embedded electron
+	! and ONLY if there is AT LEAST one embedded electron.
+	! Acceleration due to neutral atoms is ONLY computed if near the material zone, 
+	! i.e. its height is less than half the interatomic distance and lower.
+	! CONSIDER GIVING THIS ONE AN ADJECTIVE
+	! subroutine time_step(N_e, N_et, emb, Nx, Ny, Nz, atoms, Z, d, dt, r, v, a)
+	!=======================================================================
+	! Subroutine : time_step_near_zone
+	! Purpose    : Perform a time step update for a projectile electron near a material zone,
+	!              including position, velocity, and acceleration updates.
+	! Arguments  :
+	!   - integer(i8), intent(in) :: num_embedded
+	!       Number of embedded electrons.
+	!   - integer(i8), intent(in) :: material_boundaries(3)
+	!       Boundaries of the material grid.
+	!   - real(dp), intent(in) :: embedded_positions(:,:)
+	!       Positions of the embedded electrons.
+	!   - real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
+	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+	!       Positions of the atoms in the material grid.
+	!   - integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:)
+	!       Charges of the atoms in the material grid.
+	!   - real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:)
+	!       Cube roots of the charges of the atoms in the material grid.
+	!   - real(dp), intent(in) :: dt
+	!       Time step for the simulation.
+	!   - real(dp), intent(inout) :: r(3)
+	!       Position vector of the projectile electron.
+	!   - real(dp), intent(inout) :: v(3)
+	!       Velocity vector of the projectile electron.
+	!   - real(dp), intent(inout) :: a(3)
+	!       Acceleration vector of the projectile electron.
+	! Variables  :
+	!   - real(dp) :: rt(3)
+	!       Position vector of the target (either an embedded electron or an atom).
+	!   - real(dp) :: ak(3)
+	!       Acceleration vector contribution from a single electron or atom.
+	!   - real(dp) :: cbrt_Z
+	!       Cube root of the atomic charge.
+	!   - integer :: Z
+	!       Atomic charge.
+	!   - integer(i8) :: atom_indexes(3)
+	!       Indices of nearby atoms in the material grid.
+	!   - integer(i8) :: i, j, k
+	!       Loop counters for traversing through the nearby atoms.
+	!=======================================================================
+	! TO BE EDITED (from m4 time_step_near_zone)
+	! Subroutine which computes a time step of the Velocity Verlet algorithm
+	! used to compute the trajectory of a projectile electron interacting with N_e
+	! embedded electrons out of N_et total possible embedded electrons and a **SCC**
+	! bulk of N_a=(2*Nx + 1)*(Ny + 1)*(2*Nz + 1) neutral atoms with atomic number Z.
+	! The position of the embedded electrons is stored in the array e_emb(N_et,3).
+	! Acceleration due to embedded electrons is computed for EVERY embedded electron
+	! and ONLY if there is AT LEAST one embedded electron.
+	! Acceleration due to neutral atoms is ONLY computed if near the material zone, 
+	! i.e. its height is less than half the interatomic distance and lower.
+	! This subroutine only computes the acceleration due to nearby neutral atoms,
+	! in comparison with the original vv_step, which computed the acceleration from
+	! all neutral atoms in the bulk. This is a good approximation and significantly 
+	! speeds up the simulation.
+	! This subroutine is used to compute the steps when near the material zone,
+	! which is why it is called Near Field (NF).
 	subroutine time_step &
 		(num_embedded, material_boundaries, embedded_positions, atom_positions, &
 		atom_charges, atom_charges_cbrt, dt, r, v, a)
@@ -179,7 +287,7 @@ module m3_trajectory_computation
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
-		integer(i8) :: mbi, mbj, mbk
+		integer(i8) :: atom_indexes(3)
 		integer(i8) :: i, j, k
 		! Half-step velocity update
 		v = v + 0.5*a*dt
@@ -196,17 +304,14 @@ module m3_trajectory_computation
 				a = a + ak
 			end do
 		end if
-		! Getting material grid boundaries
-		mbi = material_boundaries(1)
-		mbj = material_boundaries(2)
-		mbk = material_boundaries(3)
 		! Acceleration due to material atoms
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			do i = -mbi, mbi
-				do j = 0, -mbj, -1
-					do k = -mbk, mbk
+			call get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
+			do i = atom_indexes(1) - 1, atom_indexes(1) + 1
+				do j = atom_indexes(2) - 1, atom_indexes(2) + 1
+					do k = atom_indexes(3) - 1, atom_indexes(3) + 1
 						!Only compute acceleration in positions with atoms
 						Z = atom_charges(i,j,k)
 						if (Z .ne. 0) then
