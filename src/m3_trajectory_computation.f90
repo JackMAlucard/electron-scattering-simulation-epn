@@ -41,7 +41,7 @@ module m3_trajectory_computation
 		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
 	end subroutine number_of_iterations_estimation
 	!=======================================================================
-	! Subroutine: get_nearby_atom_indexes
+	! Subroutine: get_nearest_atom_indexes
 	! Purpose   : Determine the indexes of the nearest atom in a silica 
 	!             material grid relative to a projectile electron's position.
 	! Arguments :
@@ -58,8 +58,8 @@ module m3_trajectory_computation
 	!       Calculated indexes in each dimension.
 	!=======================================================================
 	! Subroutine that takes the position of a projectile electron in 
-	! the material zone and outputs the indexes to a nearby material atom.
-	subroutine get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
+	! the material zone and outputs the indexes to the nearest material atom.
+	subroutine get_nearest_atom_indexes(r, material_boundaries, atom_indexes)
 		implicit none
 		real(dp), intent(in) :: r(3)	! Projectile electron position
 		integer(i8), intent(in) :: material_boundaries(3)
@@ -69,28 +69,17 @@ module m3_trajectory_computation
 		mbi = material_boundaries(1)
 		mbj = material_boundaries(2)
 		mbk = material_boundaries(3)
-		if (r(1) .ge. 0) then
-			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) + 1
-			if (i .gt. mbi) i = mbi
-		else
-			i = dint(r(1)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (i .lt. -mbi) i = -mbi
-		end if
-		if (r(2) .ge. 0) then
-			j = 0
-		else
-			j = dint(r(2)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (j .lt. -mbj) j = -mbj
-		end if
-		if (r(3) .ge. 0) then
-			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) + 1
-			if (k .gt. mbk) k = mbk
-		else
-			k = dint(r(3)*INTERATOMIC_DIST_SIO2_INV) - 1
-			if (k .lt. -mbk) k = -mbk
-		end if
+		i = idnint(r(1)*INTERATOMIC_DIST_SIO2_INV)
+		if (i .gt. mbi) i = mbi
+		if (i .lt. -mbi) i = -mbi
+		j = idnint(r(2)*INTERATOMIC_DIST_SIO2_INV)
+		if (j .gt. 0) j = 0
+		if (j .lt. -mbj) j = -mbj
+		k = idnint(r(3)*INTERATOMIC_DIST_SIO2_INV)
+		if (k .gt. mbk) k = mbk
+		if (k .lt. -mbk) k = -mbk
 		atom_indexes = (/i, j, k/)
-	end subroutine get_nearby_atom_indexes
+	end subroutine get_nearest_atom_indexes
 	!=======================================================================
 	! Subroutine: acceleration_due_to_electron
 	! Purpose   : Calculate the acceleration vector experienced by an electron
@@ -308,7 +297,7 @@ module m3_trajectory_computation
 		! ONLY computed if near the material zone, i.e. if the electron 
 		! projectile position y-coordinate is less than the material's height
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			call get_nearby_atom_indexes(r, material_boundaries, atom_indexes)
+			call get_nearest_atom_indexes(r, material_boundaries, atom_indexes)
 			do i = atom_indexes(1) - 1, atom_indexes(1) + 1
 				do j = atom_indexes(2) - 1, atom_indexes(2) + 1
 					do k = atom_indexes(3) - 1, atom_indexes(3) + 1
