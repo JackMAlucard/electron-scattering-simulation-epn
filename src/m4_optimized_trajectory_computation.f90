@@ -254,9 +254,15 @@ module m4_optimized_trajectory_computation
 		a = (Q*rs)/(r**3)
 	end subroutine acceleration_due_to_super_electron
 	!=======================================================================
-	! Subroutine : time_step_far_zone
+	! Subroutine : time_step_approximate
+	! ORIGINAL:
 	! Purpose    : Perform a time step update for a projectile electron in the far zone,
 	!              including position, velocity, and acceleration updates.
+	! UPDATED AS APPROXIMATE:
+	! Purpose    : Perform a single time step update for the position, velocity,
+	!              and acceleration of a projectile electron using an approximate
+	!              method. This subroutine computes the influence of embedded
+	!              super electrons on the projectile electron's acceleration.
 	! Arguments  :
 	!   - integer(i8), intent(in) :: num_embedded
 	!       Number of embedded electrons.
@@ -284,13 +290,13 @@ module m4_optimized_trajectory_computation
 	!   - real(dp) :: rt(3)
 	!       Position vector of the target super electron.
 	!   - real(dp) :: ak(3)
-	!       Acceleration vector contribution from a single super electron.
+	!       Acceleration vector due to from a single super electron.
 	!   - integer :: Q
 	!       Charge of the super electron.
 	!   - integer(i8) :: pbi, pbj, pbk
 	!       Boundaries of the partition cells.
 	!   - integer(i8) :: super_electron_num
-	!       Number of super electrons in the current cell.
+	!       Number of super electrons in the current/in a specific cell.
 	!   - integer(i8) :: i, j, k, n
 	!       Loop counters for traversing through the partition cells and super electrons.
 	!=======================================================================
@@ -299,7 +305,7 @@ module m4_optimized_trajectory_computation
 	! Subroutine which computes a time step of the Velocity Verlet algorithm used to
 	! compute the trajectory of a projectile electron interacting with Nb equivalent
 	! embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
-	subroutine time_step_far_zone &
+	subroutine time_step_approximate &
 		(num_embedded, partition_boundaries, num_super_electrons, &
 		super_electron_charges, super_electron_positions, dt, r, v, a)
 		implicit none
@@ -353,7 +359,7 @@ module m4_optimized_trajectory_computation
 		end if
 		! Second half-step velocity update
 		v = v + 0.5*a*dt
-	end subroutine time_step_far_zone
+	end subroutine time_step_approximate
 	!=======================================================================
 	! Subroutine : compute_trajectory_optimized
 	! Purpose    : Compute the trajectory of a projectile electron using an optimized
@@ -514,7 +520,7 @@ module m4_optimized_trajectory_computation
 			.not. in_material) then
 				! Computing next Velocity Verlet time step integration using far zone
 				! approximation
-				call time_step_far_zone &
+				call time_step_approximate &
 				(num_embedded, partition_boundaries, num_super_electrons, &
 				super_electron_charges, super_electron_positions, dt, r, v, a)
 			else
