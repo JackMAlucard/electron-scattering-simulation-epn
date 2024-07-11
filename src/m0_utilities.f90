@@ -267,33 +267,36 @@ module m0_utilities
 	subroutine read_input_parameters &
 		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
 		beam_target_distance, grazing_angle, material_boundaries, &
-		num_plot_ploints, dt)
+		beam_model_output_saving_enabled, num_plot_ploints, dt)
 		implicit none
 		integer(i8), intent(out) :: num_electrons, material_boundaries(3)
 		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
 		real(dp), intent(out) :: spot_size_factor
 		real(dp), intent(out) :: grazing_angle, dt
+		logical, intent(out) :: beam_model_output_saving_enabled
 		integer(i8), intent(out) :: num_plot_ploints
-		open(unit=1, file='input.txt', status='old', action='read')
-			read(1, *) ! beam_energy (keV)
-			read(1, *) beam_energy
-			read(1, *) ! grazing_angle (º)
-			read(1, *) grazing_angle
-			read(1, *) ! num_electrons (int)
-			read(1, *) num_electrons
-			read(1, *) ! energy_spread (%)
-			read(1, *) energy_spread
-			read(1, *) ! spot_size_factor (int)
-			read(1, *) spot_size_factor
-			read(1, *) ! beam_target_distance (Å)
-			read(1, *) beam_target_distance
-			read(1, *) ! material_boundaries (int, int, int)
-			read(1, *) material_boundaries
-			read(1, *) ! num_plot_ploints (int)
-			read(1, *) num_plot_ploints
-			read(1, *) ! dt (atomic units of time), time step size
-			read(1, *) dt
-		close(1)
+		open(unit=42, file='input.txt', status='old', action='read')
+			read(42, *) ! beam_energy (keV)
+			read(42, *) beam_energy
+			read(42, *) ! grazing_angle (º)
+			read(42, *) grazing_angle
+			read(42, *) ! num_electrons (int)
+			read(42, *) num_electrons
+			read(42, *) ! energy_spread (%)
+			read(42, *) energy_spread
+			read(42, *) ! spot_size_factor (int)
+			read(42, *) spot_size_factor
+			read(42, *) ! beam_target_distance (Å)
+			read(42, *) beam_target_distance
+			read(42, *) ! material_boundaries (int, int, int)
+			read(42, *) material_boundaries
+			read(42, *) ! num_plot_ploints (int)
+			read(42, *) num_plot_ploints
+			read(42, *) ! dt (atomic units of time), time step size
+			read(42, *) dt
+			read(42, *) ! Save beam model vectors as output? (boolean)
+			read(42, *) beam_model_output_saving_enabled
+		close(42)
 	end subroutine read_input_parameters
 	!=======================================================================
 	! Subroutine: open_output_files

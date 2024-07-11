@@ -74,13 +74,14 @@ module m1_electron_beam_model
 	! The vectors generated are in the beam reference system, the 'primed' system.
   subroutine setup_electron_beam_model &
 		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
-		beam_target_distance, grazing_angle, electron_positions, &
-		electron_velocities, electron_accelerations)
+		beam_target_distance, grazing_angle, output_saving_enabled, &
+		electron_positions, electron_velocities, electron_accelerations)
 		implicit none
 		integer(i8), intent(in) :: num_electrons
 		real(dp), intent(in) :: spot_size_factor
 		real(dp), intent(in) :: beam_energy, energy_spread
 		real(dp), intent(in) :: beam_target_distance, grazing_angle
+		logical, intent(in) :: output_saving_enabled
 		real(dp), allocatable, intent(out) :: electron_positions(:,:)
 		real(dp), allocatable, intent(out) :: electron_velocities(:,:)
 		real(dp), allocatable, intent(out) :: electron_accelerations(:,:)
@@ -126,33 +127,34 @@ module m1_electron_beam_model
 			electron_velocities(i,:) = (/vx, vy, vz/)
 			! Initializing accelerations
 			electron_accelerations(i,:) = 0
-		end do
-		! Printing beam electrons' initial positions, velocities, and accelerations
-		! before applying vector transformations to them
-		open(unit=23, file='beam_model.dat', status='replace', action='write')
-		do i = 1, num_electrons
-			write(23, *) electron_positions(i,:), electron_velocities(i,:), &
-			electron_accelerations(i,:)
-		end do
-		write(23, *)
-		write(23, *)
+		end do 
+		! Printing beam electrons' initial positions and velocities before applying
+		! vector transformations to them if output saving is enabled
+		if (output_saving_enabled) then
+			open(unit=42, file='beam_model.dat', status='replace', action='write')
+			do i = 1, num_electrons
+				write(42, *) electron_positions(i,:), electron_velocities(i,:)
+			end do
+			write(42, *)
+			write(42, *)
+		end if
 		! Transforming electron beam vectors
 		translation_vector = (/0._dp, 0._dp, -beam_target_distance/)
 		do i = 1, num_electrons
 			! Initial positions translation
 			call vector_translation(translation_vector, electron_positions(i,:))
-!				electron_positions(i,:) = electron_positions(i,:) + T
 			! Rotation around x-axis
 			call rotation_about_x_axis(grazing_angle, electron_positions(i,:))
 			call rotation_about_x_axis(grazing_angle, electron_velocities(i,:))
 		end do
-		! Printing beam electrons' initial positions, velocities, and accelerations
-		! after applying vector transformations to them
-		do i = 1, num_electrons
-			write(23, *) electron_positions(i,:), electron_velocities(i,:), &
-			electron_accelerations(i,:)
-		end do
-		close(23)
+		! Printing beam electrons' initial positions and velocities after applying
+		! vector transformations to them if output saving is enabled
+		if (output_saving_enabled) then
+			do i = 1, num_electrons
+				write(42, *) electron_positions(i,:), electron_velocities(i,:)
+			end do
+			close(42)
+		end if
 	end subroutine setup_electron_beam_model
 
 end module m1_electron_beam_model
