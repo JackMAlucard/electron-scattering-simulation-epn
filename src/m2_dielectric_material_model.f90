@@ -44,15 +44,17 @@ module m2_dielectric_material_model
 	! index corresponds to the position coordinates.
 	! The subroutine also transforms the magnitudes to au.
 	subroutine setup_simple_silica_model &
-		(material_boundaries, atom_positions, atom_charges, atom_charges_cbrt)
+		(material_boundaries, output_saving_enabled, atom_positions, &
+		atom_charges, atom_charges_cbrt)
 		implicit none
 		integer(i8), intent(in) :: material_boundaries(3)
+		logical, intent(in) :: output_saving_enabled
 		real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
 		integer, allocatable, intent(out) :: atom_charges(:,:,:)
 		real(dp), allocatable, intent(out) :: atom_charges_cbrt(:,:,:)
 		real(dp) :: x, y, z
 		integer(i8) :: mbi, mbj, mbk
-		integer(i8) :: i, j, k
+		integer(i8) :: i, j, k, n
 		! Getting material grid boundaries
 		mbi = material_boundaries(1)
 		mbj = material_boundaries(2)
@@ -91,6 +93,28 @@ module m2_dielectric_material_model
 			end do
 		end do
 		atom_charges_cbrt = atom_charges**(1/3._dp)
+		! Printing Si and O positions if output saving is enabled
+		if (output_saving_enabled) then
+			open(unit=42, file='material_model.dat', status='replace', action='write')
+			do n = 1, 2
+				do i = -mbi, mbi
+					do j = 0, -mbj, -1
+						do k = -mbk, mbk
+							! Write silicon atom positions in the first iteration
+							if (n .eq. 1 .and. atom_charges(i,j,k) .eq. 14) then
+								write(42, *) atom_positions(i,j,k,:)
+							! Write oxygen atom position in the second iteration
+							else if (n .eq. 2 .and. atom_charges(i,j,k) .eq. 8) then
+								write(42, *) atom_positions(i,j,k,:)
+							end if
+						end do
+					end do
+				end do
+				write(42, *)
+				write(42, *)
+			end do	
+			close(42)
+		end if
 	end subroutine setup_simple_silica_model
 
 end module m2_dielectric_material_model

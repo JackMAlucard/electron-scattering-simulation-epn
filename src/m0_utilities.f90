@@ -267,13 +267,15 @@ module m0_utilities
 	subroutine read_input_parameters &
 		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
 		beam_target_distance, grazing_angle, material_boundaries, &
-		beam_model_output_saving_enabled, num_plot_ploints, dt)
+		beam_model_output_saving_enabled, material_model_output_saving_enabled, &
+		num_plot_ploints, dt)
 		implicit none
 		integer(i8), intent(out) :: num_electrons, material_boundaries(3)
 		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
 		real(dp), intent(out) :: spot_size_factor
 		real(dp), intent(out) :: grazing_angle, dt
 		logical, intent(out) :: beam_model_output_saving_enabled
+		logical, intent(out) :: material_model_output_saving_enabled
 		integer(i8), intent(out) :: num_plot_ploints
 		open(unit=42, file='input.txt', status='old', action='read')
 			read(42, *) ! beam_energy (keV)
@@ -296,6 +298,8 @@ module m0_utilities
 			read(42, *) dt
 			read(42, *) ! Save beam model vectors as output? (boolean)
 			read(42, *) beam_model_output_saving_enabled
+			read(42, *) ! Save material model atom positions as output? (boolean)
+			read(42, *) material_model_output_saving_enabled
 		close(42)
 	end subroutine read_input_parameters
 	!=======================================================================

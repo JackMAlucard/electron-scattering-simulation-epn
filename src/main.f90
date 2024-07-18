@@ -16,6 +16,7 @@ program main
 	real(dp) :: beam_energy, energy_spread
 	real(dp) :: beam_target_distance, grazing_angle
 	logical :: beam_model_output_saving_enabled
+	logical :: material_model_output_saving_enabled
 	real(dp), allocatable :: electron_positions(:,:), electron_velocities(:,:)
 	real(dp), allocatable :: electron_accelerations(:,:)
 	! m2_dielectric_material_model module variables ******************************
@@ -49,7 +50,8 @@ program main
 	call read_input_parameters &
 		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
 		beam_target_distance, grazing_angle, material_boundaries, &
-		beam_model_output_saving_enabled, num_plot_ploints, dt)
+		beam_model_output_saving_enabled, material_model_output_saving_enabled, &
+		num_plot_ploints, dt)
 	
 	! SETTING UP ELECTRON BEAM MODEL**********************************************
 	! Converting input parameters to the appropriate units
@@ -63,7 +65,8 @@ program main
 	
 	! SETTING UP DIELECTRIC MATERIAL MODEL ***************************************
 	call setup_simple_silica_model &
-		(material_boundaries, atom_positions, atom_charges, atom_charges_cbrt)
+		(material_boundaries, material_model_output_saving_enabled, &
+		atom_positions, atom_charges, atom_charges_cbrt)
 		
 	! COMPUTING ELECTRON TRAJECTORIES ********************************************
 	! Allocating and initializing embedded and scattered positions arrays
