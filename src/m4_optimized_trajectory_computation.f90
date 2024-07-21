@@ -602,7 +602,29 @@ module m4_optimized_trajectory_computation
 		end do
 	end subroutine compute_trajectory_optimized
 	!=======================================================================
-	! ...
+	! Subroutine : write_final_super_electron_distribution
+	! Purpose    : Write the final distribution of super electrons, including
+	!              their charges and positions, to a file.
+	! Arguments  :
+	!   - integer(i8), intent(in) :: partition_boundaries(3)
+	!       Boundaries of the partition cells.
+	!   - integer(i8), intent(in) :: num_super_electrons( &
+	!         -partition_boundaries(1):, -partition_boundaries(2):, &
+	!         -partition_boundaries(3):)
+	!       Number of super electrons in each cell.
+	!   - integer, intent(in) :: super_electron_charges( &
+	!         -partition_boundaries(1):, -partition_boundaries(2):, &
+	!         -partition_boundaries(3):, :)
+	!       Charges of the super electrons in each cell.
+	!   - real(dp), intent(in) :: super_electron_positions( &
+	!         -partition_boundaries(1):, -partition_boundaries(2):, &
+	!         -partition_boundaries(3):, :, :)
+	!       Positions of the super electrons in each cell.
+	! Variables  :
+	!   - integer(i8) :: pbi, pbj, pbk
+	!       Boundaries of the partition cells.
+	!   - integer(i8) :: i, j, k, n
+	!       Loop counters.
 	!=======================================================================
 	subroutine write_final_super_electron_distribution &
 		(partition_boundaries, num_super_electrons, super_electron_charges, &
