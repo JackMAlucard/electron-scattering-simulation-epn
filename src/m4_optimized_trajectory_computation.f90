@@ -601,5 +601,45 @@ module m4_optimized_trajectory_computation
 			end if
 		end do
 	end subroutine compute_trajectory_optimized
-
+	!=======================================================================
+	! ...
+	!=======================================================================
+	subroutine write_final_super_electron_distribution &
+		(partition_boundaries, num_super_electrons, super_electron_charges, &
+		super_electron_positions)
+		implicit none
+		integer(i8), intent(in) :: partition_boundaries(3)
+		integer(i8), intent(in) :: num_super_electrons( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):)
+		integer, intent(in) :: super_electron_charges( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :)
+		real(dp), intent(in) :: super_electron_positions( &
+			-partition_boundaries(1):, -partition_boundaries(2):, &
+			-partition_boundaries(3):, :, :)
+		integer(i8) :: pbi, pbj, pbk
+		integer(i8) :: i, j, k, n
+		! Getting partition cells boundaries
+		pbi = partition_boundaries(1)
+		pbj = partition_boundaries(2)
+		pbk = partition_boundaries(3)
+		open(unit=42, file='final_super_electron_distribution.dat', &
+			status='replace', action='write')
+			do i = -pbi, pbi
+				do j = -1, -pbj, -1
+					do k = -pbk, pbk
+						! If there are more than zero super electrons in the i, j, k cell,
+						! get the super electron(s) charges and positions
+						if (num_super_electrons(i,j,k) .gt. 0) then
+							do n = 1, num_super_electrons(i,j,k)
+								write(42, *) i, j, k, n, super_electron_charges(i,j,k,n), &
+								super_electron_positions(i,j,k,n,:)
+							end do
+						end if
+					end do
+				end do
+			end do
+		close(42)
+	end subroutine write_final_super_electron_distribution
 end module m4_optimized_trajectory_computation

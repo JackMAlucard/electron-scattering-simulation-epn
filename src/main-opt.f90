@@ -9,7 +9,8 @@ program main
 	use m3_trajectory_computation, &
 		only: number_of_iterations_estimation, compute_scattering_angles
 	use m4_optimized_trajectory_computation, &
-		only: setup_cells_and_super_electrons, compute_trajectory_optimized
+		only: setup_cells_and_super_electrons, compute_trajectory_optimized, &
+		write_final_super_electron_distribution
 	implicit none
 	! m1_electron_beam_model module variables ************************************
 	integer(i8) :: num_electrons
@@ -161,6 +162,10 @@ program main
 	print*, "  Number of electrons embedded: ", num_embedded
 	print*, "  Number of electrons scattered:", num_scattered
 	print*, "Total simulation time:", total_time
+	! Writing final super electron distribution magnitudes to output file
+	call write_final_super_electron_distribution &
+		(partition_boundaries, num_super_electrons, super_electron_charges, &
+		super_electron_positions)
 	! Writing final simulation status information to output file
 	call write_simulation_status_information &
 		(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
