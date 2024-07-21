@@ -15,21 +15,22 @@ program main
 	real(dp) :: spot_size_factor
 	real(dp) :: beam_energy, energy_spread
 	real(dp) :: beam_target_distance, grazing_angle
-	logical :: beam_model_output_saving_enabled
-	logical :: material_model_output_saving_enabled
 	real(dp), allocatable :: electron_positions(:,:), electron_velocities(:,:)
 	real(dp), allocatable :: electron_accelerations(:,:)
+	logical :: beam_model_output_saving_enabled
 	! m2_dielectric_material_model module variables ******************************
 	integer(i8) :: material_boundaries(3)
 	real(dp), allocatable :: atom_positions(:,:,:,:)
 	integer, allocatable :: atom_charges(:,:,:)
 	real(dp), allocatable :: atom_charges_cbrt(:,:,:)
+	logical :: material_model_output_saving_enabled
 	! m3_trajectory_computation module variables *********************************
 	integer(i8) :: num_plot_ploints, max_iterations
 	real(dp) :: dt, r(3), v(3), a(3)
 	integer(i8) :: num_embedded, num_scattered
 	real(dp), allocatable :: embedded_positions(:,:), scattered_positions(:,:)
 	real(dp) :: alpha, beta
+	logical :: electron_trajectories_saving_enabled
 	! Additional local variables *************************************************
 	integer(i8) :: i, j, k
 	real(dp) :: start_time, end_time, total_time
@@ -51,7 +52,7 @@ program main
 		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
 		beam_target_distance, grazing_angle, material_boundaries, &
 		beam_model_output_saving_enabled, material_model_output_saving_enabled, &
-		num_plot_ploints, dt)
+		electron_trajectories_saving_enabled, num_plot_ploints, dt)
 	
 	! SETTING UP ELECTRON BEAM MODEL**********************************************
 	! Converting input parameters to the appropriate units
@@ -80,7 +81,7 @@ program main
 	previous_num_embedded = 0
 	previous_num_scattered = 0
 	! Opening files to store the output results of the simulation
-	call open_output_files(output_unit)
+	call open_output_files (output_unit, electron_trajectories_saving_enabled)
 	! Getting total simulation start time
 	call cpu_time(start_time)
 	! Computing the trajectories of each electron in the beam
@@ -97,12 +98,16 @@ program main
 			(r, v, dt, max_iterations, num_plot_ploints)
 		! Computing current electron trajectory
 		call compute_trajectory &
-			(num_plot_ploints, max_iterations, output_unit+1, material_boundaries, & 
-			atom_positions, atom_charges, atom_charges_cbrt, dt, r, v, a, &
-			num_embedded, num_scattered, embedded_positions, scattered_positions)
-		! Writing empty lines for separation between trajectories in output file
-		write(output_unit+1, *)
-		write(output_unit+1, *)
+			(electron_trajectories_saving_enabled, num_plot_ploints, max_iterations, & 
+			output_unit+1, material_boundaries, atom_positions, atom_charges, &
+			atom_charges_cbrt, dt, r, v, a, num_embedded, num_scattered, & 
+			embedded_positions, scattered_positions)
+		! Writing empty lines for separation between trajectories in output file,
+		! if electron_trajectories_saving_enabled
+		if (electron_trajectories_saving_enabled) then
+			write(output_unit+1, *)
+			write(output_unit+1, *)
+		end if
 		! Updating number of embedded and scattered electrons and writing to files
 		! Case: Electron is embedded
 		if (num_embedded .gt. previous_num_embedded) then

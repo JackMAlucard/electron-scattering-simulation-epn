@@ -268,7 +268,7 @@ module m0_utilities
 		(num_electrons, beam_energy, energy_spread, spot_size_factor, &
 		beam_target_distance, grazing_angle, material_boundaries, &
 		beam_model_output_saving_enabled, material_model_output_saving_enabled, &
-		num_plot_ploints, dt)
+		electron_trajectories_saving_enabled, num_plot_ploints, dt)
 		implicit none
 		integer(i8), intent(out) :: num_electrons, material_boundaries(3)
 		real(dp), intent(out) :: beam_energy, energy_spread, beam_target_distance
@@ -276,6 +276,7 @@ module m0_utilities
 		real(dp), intent(out) :: grazing_angle, dt
 		logical, intent(out) :: beam_model_output_saving_enabled
 		logical, intent(out) :: material_model_output_saving_enabled
+		logical, intent(out) :: electron_trajectories_saving_enabled
 		integer(i8), intent(out) :: num_plot_ploints
 		open(unit=42, file='input.txt', status='old', action='read')
 			read(42, *) ! beam_energy (keV)
@@ -300,6 +301,8 @@ module m0_utilities
 			read(42, *) beam_model_output_saving_enabled
 			read(42, *) ! Save material model atom positions as output? (boolean)
 			read(42, *) material_model_output_saving_enabled
+			read(42, *) ! Save all electron trajectories as output? (boolean)
+			read(42, *) electron_trajectories_saving_enabled
 		close(42)
 	end subroutine read_input_parameters
 	!=======================================================================
@@ -315,12 +318,16 @@ module m0_utilities
 	!=======================================================================
 	! Subroutine that opens the files that will store the output results of the
 	! simulations.
-	subroutine open_output_files(output_unit)
+	subroutine open_output_files &
+		(output_unit, electron_trajectories_saving_enabled)
 		implicit none
-		integer :: output_unit
-		! Open file to write electron trajectories
-		open(unit=output_unit+1, file="electron_trajectories.dat", &
-			status='replace', action='write')
+		integer, intent(in) :: output_unit
+		logical, intent(in) :: electron_trajectories_saving_enabled
+		! Open file to write electron trajectories, if trajectory saving is enabled
+		if (electron_trajectories_saving_enabled) then
+			open(unit=output_unit+1, file="electron_trajectories.dat", &
+				status='replace', action='write')
+		end if
 		! Open file to write the final position of embedded electrons
 		open(unit=output_unit+2, file='embedded_positions.dat', &
 			status='replace', action='write')

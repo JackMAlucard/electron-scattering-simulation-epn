@@ -457,12 +457,13 @@ module m4_optimized_trajectory_computation
 !arrays that have been previously defined in the add_electron_to_bin
 !subroutine.
 	subroutine compute_trajectory_optimized &
-		(num_plot_ploints, max_iterations, output_unit, material_boundaries, & 
-		atom_positions, atom_charges, atom_charges_cbrt, partition_boundaries, & 
-		num_super_electrons, super_electron_positions, super_electron_charges, & 
-		dt, r, v, a, num_embedded, num_scattered, embedded_positions, & 
-		scattered_positions)
+		(electron_trajectories_saving_enabled, num_plot_ploints, max_iterations, &
+		output_unit, material_boundaries, atom_positions, atom_charges, & 
+		atom_charges_cbrt, partition_boundaries, num_super_electrons, &
+		super_electron_positions, super_electron_charges, dt, r, v, a, &
+		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
+		logical, intent(in) :: electron_trajectories_saving_enabled
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer, intent(in) :: output_unit
 		integer(i8), intent(in) :: material_boundaries(3), partition_boundaries(3)
@@ -507,8 +508,9 @@ module m4_optimized_trajectory_computation
 		do while (.not.(is_embedded .or. is_scattered .or. is_max_iteration))
 			t = i*dt ! t0 = 0, just to print to file, not needed for computations
 			! Plotting only P points
-			if ((mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. &
-			j .lt. num_plot_ploints) then
+			if (electron_trajectories_saving_enabled .and. &
+				(mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. &
+				j .lt. num_plot_ploints) then
 				! Write values to file
 				write(output_unit,*) t, r
 				j = j + 1
