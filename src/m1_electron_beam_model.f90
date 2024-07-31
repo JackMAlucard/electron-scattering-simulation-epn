@@ -82,11 +82,14 @@ module m1_electron_beam_model
 	!       Flag to determine if the beam model initial positions and
 	!       velocities are saved.
 	!   - real(dp), allocatable, intent(out) :: electron_positions(:,:)
-	!       Array to store the initial positions of the electrons.
+	!       Array to store the initial positions of the electrons in atomic
+	!       units (a0).
 	!   - real(dp), allocatable, intent(out) :: electron_velocities(:,:)
-	!       Array to store the initial velocities of the electrons.
+	!       Array to store the initial velocities of the electrons in atomic
+	!       units (a0/aut).
 	!   - real(dp), allocatable, intent(out) :: electron_accelerations(:,:)
-	!       Array to store the initial accelerations of the electrons.
+	!       Array to store the initial accelerations of the electrons in
+	!       atomic units (a0/aut^2).
 	!=============================================================================
   subroutine setup_electron_beam_model &
 		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
@@ -141,8 +144,9 @@ module m1_electron_beam_model
 			! Initialize velocities in the +z direction
 			vx = 0
 			vy = 0
-			! Generate two random energy values every odd iteration
-			if (mod(i,2) .neq. 0) then
+			! Generate two random energy values every odd iteration;
+			! compute velocity z-component using equation in atomic units
+			if (mod(i,2) .ne. 0) then
 				call random_normal(energy_mu, energy_sigma, energy_1, energy_2)
 				vz = dsqrt(2*energy_1)
 			else
