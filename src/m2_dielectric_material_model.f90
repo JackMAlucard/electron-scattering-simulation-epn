@@ -35,8 +35,7 @@ module m2_dielectric_material_model
 	!   - logical, intent(in) :: output_saving_enabled
 	!       Flag to determine if the material model atom positions are saved.
 	!   - real(dp), allocatable, intent(out) :: atom_positions(:,:,:,:)
-	!       Array to store the positions of the atoms with each coordinate in
-	!       atomic units (a0).
+	!       Array to store the positions of the atoms in atomic units (a0).
 	!   - integer, allocatable, intent(out) :: atomic_numbers(:,:,:)
 	!       Array to store the atomic numbers of the atoms.
 	!   - real(dp), allocatable, intent(out) :: atomic_numbers_cbrt(:,:,:)
