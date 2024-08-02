@@ -1,110 +1,130 @@
 module m4_optimized_trajectory_computation
+
 	use m0_utilities, &
 		only: dp, i8, INTERATOMIC_DIST_SIO2_INV, CELL_SCALE_FACTOR, &
-		CELL_LENGTH_INV, MAX_EQUIVALENT_CHARGE, MATERIAL_HEIGHT_SIO2, &
+		CELL_LENGTH_INV, MAX_SUPER_ELECTRON_CHARGE, MATERIAL_HEIGHT_SIO2, &
 		CROSS_SECTION_SIO2, EFFECTIVE_DISTANCE, random_exponential
+
 	use m3_trajectory_computation, &
 		only: time_step, acceleration_due_to_electron, acceleration_due_to_atom
+
 	implicit none
 	contains
-	!=======================================================================
+	!=============================================================================
 	! Subroutine: setup_cells_and_super_electrons
-	! Purpose   : Initialize the cell partitioning of the simulation space 
-	!             and prepare storage for super electrons within each cell.
+	! Purpose   : Partition the material zone into cells by initializing the
+	!             super electron number, charges, and positions arrays.
+	!             - The partition cells are used to merge embedded electrons
+	!               into super electrons in each cell, which will in turn
+	!               allow to compute an approximation of the time step updates
+	!               in the Velocity Verlet algorithm used to to simulate a
+	!               projectile electron's trajectory.
+	!             - Each partition cell can only store up to a maximum amount of
+	!               super electrons determined by the MAX_SUPER_ELECTRON_CHARGE
+	!               numerical constant.
+	!             - The partition cells indices boundaries are defined by the
+	!               material grid index boundaries and the CELL_SCALE_FACTOR
+	!               numerical constant.
+	!             - Partition cells are defined by the indices i, j, and k.
+	!               The range of each index is determined by the values in the
+	!               partition_boundaries = (pbi, pbj, pbk) array as follows:
+	!               - i ranges from -pbi to pbi skipping zero (2*pbi values),
+	!               - j ranges from -pbj to -1 (pbj values),
+	!               - k ranges from -pbk to pbk skipping zero (2*pbk values).
 	! Arguments :
 	!   - integer(i8), intent(in) :: num_electrons
 	!       Total number of electrons in the simulation.
 	!   - integer(i8), intent(in) :: material_boundaries(3)
-	!       Boundaries of the material grid.
+	!       Material grid indices boundaries.
 	!   - integer(i8), intent(out) :: partition_boundaries(3)
-	!       Boundaries of the partitioned cells.
+	!       Partition cells indices boundaries.
 	!   - integer(i8), allocatable, intent(out) :: num_super_electrons(:,:,:)
 	!       Number of super electrons in each cell.
 	!   - integer, allocatable, intent(out) :: super_electron_charges(:,:,:,:)
-	!       Charges of the super electrons in each cell.
-	!   - real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
-	!       Positions of the super electrons in each cell.
-	! Variables :
-	!   - integer(i8) :: pbi, pbj, pbk
-	!       Partition boundaries in each dimension.
-	!   - integer :: max_super_electrons
-	!       Maximum possible number of super electrons in a cell.
-	!=======================================================================
-	! Subroutine that defines the partition boundaries. It also allocates and 
-	! initializes the arrays that store the super electrons information.
+	!       Charges of the super electrons in each cell in atomic units (e).
+	!   - real(dp), allocatable, intent(out) :: super_electron_positions &
+	!       (:,:,:,:,:)
+	!       Positions of the super electrons in each cell in atomic units (a0).
+	!=============================================================================
 	subroutine setup_cells_and_super_electrons &
 		(num_electrons, material_boundaries, partition_boundaries, &
 		num_super_electrons, super_electron_charges, super_electron_positions)
 		implicit none
+
+		! Input/Output variables
 		integer(i8), intent(in) :: num_electrons, material_boundaries(3)
 		integer(i8), intent(out) :: partition_boundaries(3)
 		integer(i8), allocatable, intent(out) :: num_super_electrons(:,:,:)
 		integer, allocatable, intent(out) :: super_electron_charges(:,:,:,:)
 		real(dp), allocatable, intent(out) :: super_electron_positions(:,:,:,:,:)
+
+		! Local variables
 		integer(i8) :: pbi, pbj, pbk
-		integer :: max_super_electrons
-		! Computing partition boundaries
+		integer :: max_num_super_electrons
+
+		! Compute partition cells indices boundaries
 		pbi = material_boundaries(1)/CELL_SCALE_FACTOR + 1
 		pbj = material_boundaries(2)/CELL_SCALE_FACTOR + 1
 		pbk = material_boundaries(3)/CELL_SCALE_FACTOR + 1
 		partition_boundaries = (/pbi, pbj, pbk/)
-		! num_cells = (2*pbi)*(pbj)*(2*pbk)
-		! Maximum possible number of super electrons on a cell, considering the
-		! extreme case in which all of the electrons are embedded into a single cell
-		max_super_electrons = (num_electrons - 1)/MAX_EQUIVALENT_CHARGE + 1
-		! Allocating array that stores the number of super electrons on all cells
+
+		! Set maximum possible number of super electrons in a cell, considering
+		! the extreme case in which all electrons are embedded in a single cell
+		max_num_super_electrons = (num_electrons - 1)/MAX_SUPER_ELECTRON_CHARGE + 1
+
+		! Allocate array for the number of super electrons in each cell
 		allocate (num_super_electrons(-pbi:pbi,-pbj:-1,-pbk:pbk))
-		! Initializing as zero, since there are no super electrons at the start
+		! Initialize as zero, since there are no super electrons at the start
 		num_super_electrons = 0
-		! Allocating array that stores the super electrons charges on all cells
+
+		! Allocate array for the charges of super electrons in each cell
 		allocate &
-		(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk,max_super_electrons))
-		! Initializing as zero, since there are no super electrons at the start
+		(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk, &
+			max_num_super_electrons))
+		! Initialize as zero, since there are no super electrons at the start
 		super_electron_charges = 0
+
 		! Allocating array that stores the super electrons positions on all cells
 		allocate &
-		(super_electron_positions(-pbi:pbi,-pbj:-1,-pbk:pbk,max_super_electrons,3))
-		! Initializing as zero, the positions will be given as the mean of the 
+		(super_electron_positions(-pbi:pbi,-pbj:-1,-pbk:pbk, &
+			max_num_super_electrons,3))
+		! Initialize as zero, the positions will be given as the mean of the
 		! positions of the electrons that form the super electron
 		super_electron_positions = 0
+
 	end subroutine setup_cells_and_super_electrons
-	!=======================================================================
+
+	!=============================================================================
 	! Subroutine: get_cell_indexes
-	! Purpose   : Determine the cell indexes corresponding to a given position 
-	!             within the partitioned simulation space.
+	! Purpose   : Determine the cell indices within the partitioned material
+	!             zone corresponding to a given position considering the
+	!             partition cells' boundary limits.
 	! Arguments :
 	!   - real(dp), intent(in) :: r(3)
-	!       Position vector of the particle.
+	!       Position vector in atomic units (a0)
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
-	!       Boundaries of the partitioned cells.
+	!       Partition cells indices boundaries.
 	!   - integer(i8), intent(out) :: cell_indexes(3)
-	!       Computed cell indexes for the position vector.
-	! Variables :
-	!   - integer(i8) :: pbi, pbj, pbk
-	!       Partition boundaries in each dimension.
-	!   - integer(i8) :: i, j, k
-	!       Cell indexes in each dimension.
-	!=======================================================================
-	! Subroutine that takes the position of an electron r(3), the inverse cell 
-	! length (in a0) and determines the cell_indexes of the cubic cell to which 
-	! the embedded electron belongs to in order to update the super electron in 
-	! that cell. 
-	! Electrons embedded after crossing the material boundaries will be included
-	! in the cell at the boundary of the partitions.
-	! The lowest possible index in the y-direction is -1 since there wouldn't be
-	! any cells with index 0 in any direction. Since the arrays have those slots,
-	! those MUST BE ignored, and as such were initialized and will remain zero.
+	!       Computed cell indices corresponding to the position vector.
+	!=============================================================================
 	subroutine get_cell_indexes(r, partition_boundaries, cell_indexes)
 		implicit none
+
+		! Input/Output variables
 		real(dp), intent(in) :: r(3)
 		integer(i8), intent(in) :: partition_boundaries(3)
 		integer(i8), intent(out) :: cell_indexes(3)
+
+		! Local variables
 		integer(i8) :: pbi, pbj, pbk
 		integer(i8) :: i, j, k
-		! Getting partition cells boundaries
+
+		! Extract partition cells index boundaries
 		pbi = partition_boundaries(1)
 		pbj = partition_boundaries(2)
 		pbk = partition_boundaries(3)
+
+		! Calculate the index in the x-direction and constrain within boundaries
 		if (r(1) .ge. 0) then
 			i = dint(r(1)*CELL_LENGTH_INV) + 1
 			if (i .gt. pbi) i = pbi
@@ -112,12 +132,16 @@ module m4_optimized_trajectory_computation
 			i = dint(r(1)*CELL_LENGTH_INV) - 1
 			if (i .lt. -pbi) i = -pbi
 		end if
+
+		! Calculate the index in the y-direction and constrain within boundaries
 		if (r(2) .ge. 0) then
-			j = -1 ! The top cell includes a bit more space
+			j = -1
 		else
 			j = dint(r(2)*CELL_LENGTH_INV) - 1
 			if (j .lt. -pbj) j = -pbj
 		end if
+
+		! Calculate the index in the z-direction and constrain within boundaries
 		if (r(3) .ge. 0) then
 			k = dint(r(3)*CELL_LENGTH_INV) + 1
 			if (k .gt. pbk) k = pbk
@@ -125,225 +149,242 @@ module m4_optimized_trajectory_computation
 			k = dint(r(3)*CELL_LENGTH_INV) - 1
 			if (k .lt. -pbk) k = -pbk
 		end if
+
+		! Store the partition cell indices
 		cell_indexes = (/i, j, k/)
+
 	end subroutine get_cell_indexes
-	!=======================================================================
+
+	!=============================================================================
 	! Subroutine: update_super_electron_in_cell
-	! Purpose   : Update the super electron properties in a specific cell based on 
+	! Purpose   : Update the super electron arrays in a specific cell based on
 	!             the position of an embedded electron.
 	! Arguments :
 	!   - real(dp), intent(in) :: r(3)
-	!       Position vector of the embedded electron.
+	!       Position vector of the embedded electron in atomic units (a0).
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
-	!       Boundaries of the partitioned cells.
-	!   - integer(i8), intent(inout) :: num_super_electrons(-partition_boundaries(1):, 
-	!                     -partition_boundaries(2):, -partition_boundaries(3):)
-	!       Array storing the number of super electrons in each cell.
-	!   - integer, intent(inout) :: super_electron_charges(-partition_boundaries(1):, 
-	!                     -partition_boundaries(2):, -partition_boundaries(3):, :)
-	!       Array storing the charge of super electrons in each cell.
-	!   - real(dp), intent(inout) :: super_electron_positions(-partition_boundaries(1):, 
-	!                     -partition_boundaries(2):, -partition_boundaries(3):, :, :)
-	!       Array storing the positions of super electrons in each cell.
-	! Variables :
-	!   - integer(i8) :: cell_indexes(3), i, j, k, n
-	!       Indexes of the cell corresponding to the position vector and loop variables.
-	!   - integer :: super_electron_charge
-	!       Charge of the current super electron.
-	!   - real(dp) :: super_electron_r(3)
-	!       Position of the current super electron.
-	!=======================================================================
-	! Subroutine that updated the values of the super electron arrays in the
-	! cell in which the projectile electron with position r gets embedded.
+	!       Partition cells indices boundaries.
+	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):)
+	!       Number of super electrons in each cell.
+	!   - integer, intent(inout) :: super_electron_charges &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :)
+	!       Charges of the super electrons in each cell in atomic units (e).
+	!   - real(dp), intent(inout) :: super_electron_positions &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :, :)
+	!       Positions of the super electrons in each cell in atomic units (a0).
+	!=============================================================================
 	subroutine update_super_electron_in_cell &
-		(r, partition_boundaries, num_super_electrons, & 
+		(r, partition_boundaries, num_super_electrons, &
 		super_electron_charges, super_electron_positions)
 		implicit none
+
+		! Input/Output variables
 		real(dp), intent(in) :: r(3)
 		integer(i8), intent(in) :: partition_boundaries(3)
-		integer(i8), intent(inout) :: num_super_electrons( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer(i8), intent(inout) :: num_super_electrons &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):)
-		integer, intent(inout) :: super_electron_charges( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer, intent(inout) :: super_electron_charges &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :)
-		real(dp), intent(inout) :: super_electron_positions( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		real(dp), intent(inout) :: super_electron_positions &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :, :)
+
+		! Local variables
 		integer(i8) :: cell_indexes(3), i, j, k, n
 		integer :: super_electron_charge
 		real(dp) :: super_electron_r(3)
-		! Getting embedded electron's cell based on its position r
+
+		! Get embedded electron's cell indices based on its position r
 		call get_cell_indexes(r, partition_boundaries, cell_indexes)
 		i = cell_indexes(1)
 		j = cell_indexes(2)
 		k = cell_indexes(3)
+
 		! Get number of super electrons in the cell
 		n = num_super_electrons(i,j,k)
-		! If there are no embedded electrons in the cell, yet,
-		! i.e. no super electrons yet in the cell
+
+		! Cell status: There are NO super electrons in the cell yet
 		if (n .eq. 0) then
-			! Updating super electrons arrays initializing the first one 
+			! Initialize the first super electron in the cell and update arrays
 			n = 1
 			num_super_electrons(i,j,k) = n
 			super_electron_charges(i,j,k,n) = 1
 			super_electron_positions(i,j,k,n,:) = r
-		! If current super electron is not full of charge, add extra charge
-		! and compute new super electron position
-		else if (super_electron_charge .lt. MAX_EQUIVALENT_CHARGE) then
+
+		! Cell status: There is at least one super electron in the cell, and
+		! the current super electron has NOT reached its maximum charge value
+		else if (super_electron_charge .lt. MAX_SUPER_ELECTRON_CHARGE) then
 			! Read current super electron charge and position
 			super_electron_charge = super_electron_charges(i,j,k,n)
 			super_electron_r = super_electron_positions(i,j,k,n,:)
-			! Compute new super electron charge and position
+
+			! Add extra charge and compute new mean position
 			super_electron_charge = super_electron_charge + 1
 			super_electron_r = &
 			super_electron_r + (r - super_electron_r)/super_electron_charge
-			! Update super electron charge and position
+
+			! Update current super electron charge and position arrays
 			super_electron_charges(i,j,k,n) = super_electron_charge
 			super_electron_positions(i,j,k,n,:) = super_electron_r
-		! If current super electron is full of charge, initialize next one
-		else if (super_electron_charge .eq. MAX_EQUIVALENT_CHARGE) then
+
+		! Cell status: There is at least one super electron in the cell, and
+		! the current super electron has reached its maximum charge value
+		else if (super_electron_charge .eq. MAX_SUPER_ELECTRON_CHARGE) then
+			! Update current super electron number
 			n = n + 1
-			! Updating super electrons arrays initializing the next one
+
+			! Initialize the next super electron in the cell and update arrays
 			num_super_electrons(i,j,k) = n
 			super_electron_charges(i,j,k,n) = 1
 			super_electron_positions(i,j,k,n,:) = r
-		else
-			!Everything else is an error
-			print*, "ERROR UPDATING SUPER ELECTRON IN CELL"
+
 		end if
-		! Printing updated super electron info
+
+		! Print updated super electron info to console
 		print*, "Super electron arrays updated!"
 		print*, " Cell indexes:", i, j, k
 		print*, " New super electron number:", n
 		print*, " New super electron charge:", super_electron_charge
 		print*, " New super electron position:", super_electron_r
+
 	end subroutine update_super_electron_in_cell
-	!=======================================================================
-	! Subroutine : acceleration_due_to_super_electron
-	! Purpose    : Calculate the acceleration on a particle due to a super electron.
-	! Arguments  :
+
+	!=============================================================================
+	! Subroutine: acceleration_due_to_super_electron
+	! Purpose   : Calculate the acceleration vector experienced by a projectile
+	!             electron due to the electrostatic interaction with a stationary
+	!             target super electron, based on their positions.
+	! Arguments :
 	!   - real(dp), intent(in) :: rp(3)
-	!       Position vector of the particle experiencing the acceleration.
+	!       Position vector of the projectile electron in atomic units (a0).
 	!   - real(dp), intent(in) :: rt(3)
-	!       Position vector of the super electron.
+	!       Position vector of the target super electron in atomic units (a0/aut).
 	!   - integer, intent(in) :: Q
-	!       Charge of the super electron.
+	!       Charge of the super electron in atomic units (e).
 	!   - real(dp), intent(out) :: a(3)
-	!       Resultant acceleration vector due to the super electron.
-	! Variables  :
-	!   - real(dp) :: rs(3)
-	!       Separation vector between the particle and the super electron.
-	!   - real(dp) :: r
-	!       Magnitude of the separation vector.
-	!=======================================================================
-	! Acceleration of a projectile electron interacting with an embedded 
-	! super electron of charge q via the electrostatic Coulomb potential. 
-	! The input and output variables are in atomic units (au).
-	! rp: r projectile, position of the incident electron (a0)
-	! rt: r target, equivalent position of the stationary electron (a0)
-	! a: Acceleration of the incident electron (aua)
+	!       Acceleration vector experienced by the projectile electron due to
+	!       the stationary target super electron in atomic units (a0/aut^2).
+	!=============================================================================
 	subroutine acceleration_due_to_super_electron(rp, rt, Q, a)
 		implicit none
-		real(dp), intent(in) :: rp(3), rt(3)
-		integer, intent(in) :: Q
-		real(dp), intent(out) :: a(3)
-		real(dp) :: rs(3), r !rs, r: separation vector and its magnitude
+
+		! Input/Output variables
+		real(dp), intent(in) :: rp(3)	! Position of the projectile electron (a0)
+		real(dp), intent(in) :: rt(3)	! Position of the target super electron (a0)
+		integer, intent(in) :: Q			! Charge of the target super electron (e)
+		real(dp), intent(out) :: a(3)	! Resulting acceleration vector (a0/aut^2)
+
+		! Local variables
+		real(dp) :: rs(3)	! Separation vector between the projectile electron and
+		                  ! target super electron (a0)
+		real(dp) :: r 		! Magnitude of the separation vector (a0)
+
+		! Compute the separation vector and its magnitude
 		rs = rp - rt
 		r = norm2(rs)
+
+		! Determine the acceleration using Coulomb's law in atomic units
 		a = (Q*rs)/(r**3)
+
 	end subroutine acceleration_due_to_super_electron
-	!=======================================================================
-	! Subroutine : time_step_approximate
-	! ORIGINAL:
-	! Purpose    : Perform a time step update for a projectile electron in the far zone,
-	!              including position, velocity, and acceleration updates.
-	! UPDATED AS APPROXIMATE:
-	! Purpose    : Perform a single time step update for the position, velocity,
-	!              and acceleration of a projectile electron using an approximate
-	!              method. This subroutine computes the influence of embedded
-	!              super electrons on the projectile electron's acceleration.
-	! Arguments  :
+
+	!=============================================================================
+	! Subroutine: time_step_approximate
+	! Purpose   : Perform an approximate time step for a projectile electron,
+	!             including position, velocity, and acceleration approximate
+	!             updates, using the Velocity Verlet algorithm to simulate
+	!             its trajectory.
+	!             - The algorithm only considers interactions with all embedded
+	!               electrons through the corresponding super electrons.
+	! Arguments :
 	!   - integer(i8), intent(in) :: num_embedded
 	!       Number of embedded electrons.
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
-	!       Boundaries of the partition cells.
-	!   - integer(i8), intent(in) :: num_super_electrons(-partition_boundaries(1):, &
-	!         -partition_boundaries(2):, -partition_boundaries(3):)
+	!       Partition cells indices boundaries.
+	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):)
 	!       Number of super electrons in each cell.
-	!   - integer, intent(in) :: super_electron_charges(-partition_boundaries(1):, &
-	!         -partition_boundaries(2):, -partition_boundaries(3):, :)
-	!       Charges of the super electrons in each cell.
-	!   - real(dp), intent(in) :: super_electron_positions( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):, :, :)
-	!       Positions of the super electrons in each cell.
+	!   - integer, intent(inout) :: super_electron_charges &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :)
+	!       Charges of the super electrons in each cell in atomic units (e).
+	!   - real(dp), intent(inout) :: super_electron_positions &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :, :)
+	!       Positions of the super electrons in each cell in atomic units (a0).
 	!   - real(dp), intent(in) :: dt
-	!       Time step for the simulation.
+	!       Time step size for the simulation in atomic units of time (aut)
 	!   - real(dp), intent(inout) :: r(3)
-	!       Position vector of the projectile electron.
+	!       Position vector of the electron in atomic units (a0). Updated after
+	!       the time step.
 	!   - real(dp), intent(inout) :: v(3)
-	!       Velocity vector of the projectile electron.
+	!       Velocity vector of the electron in atomic units (a0/aut). Updated
+	!       after the time step.
 	!   - real(dp), intent(inout) :: a(3)
-	!       Acceleration vector of the projectile electron.
-	! Variables  :
-	!   - real(dp) :: rt(3)
-	!       Position vector of the target super electron.
-	!   - real(dp) :: ak(3)
-	!       Acceleration vector due to from a single super electron.
-	!   - integer :: Q
-	!       Charge of the super electron.
-	!   - integer(i8) :: pbi, pbj, pbk
-	!       Boundaries of the partition cells.
-	!   - integer(i8) :: super_electron_num
-	!       Number of super electrons in the current/in a specific cell.
-	!   - integer(i8) :: i, j, k, n
-	!       Loop counters for traversing through the partition cells and super electrons.
-	!=======================================================================
-	! TO BE EDITED
-	! Velocity Verlet Step for Far Field (bulk electrons)
-	! Subroutine which computes a time step of the Velocity Verlet algorithm used to
-	! compute the trajectory of a projectile electron interacting with Nb equivalent
-	! embedded electrons characterized by the b_neq, b_ec, and b_er arrays. 
+	!       Acceleration vector of the electron in atomic units (a0/aut^2).
+	!       Updated after the time step.
+	!=============================================================================
 	subroutine time_step_approximate &
 		(num_embedded, partition_boundaries, num_super_electrons, &
 		super_electron_charges, super_electron_positions, dt, r, v, a)
 		implicit none
+
+		! Input/Output variables
 		integer(i8), intent(in) :: num_embedded, partition_boundaries(3)
 		integer(i8), intent(in) :: num_super_electrons(-partition_boundaries(1):, &
 			-partition_boundaries(2):, -partition_boundaries(3):)
 		integer, intent(in) :: super_electron_charges(-partition_boundaries(1):, &
 			-partition_boundaries(2):, -partition_boundaries(3):, :)
-		real(dp), intent(in) :: super_electron_positions( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		real(dp), intent(in) :: super_electron_positions &
+		(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :, :)
 		real(dp), intent(in) :: dt
 		real(dp), intent(inout) :: r(3), v(3), a(3)
+
+		! Local variables
 		real(dp) :: rt(3), ak(3)
 		integer :: Q
 		integer(i8) :: pbi, pbj, pbk, super_electron_num
 		integer(i8) :: i, j, k, n
+
 		! Half-step velocity update
 		v = v + 0.5*a*dt
+
 		! Position update
 		r = r + v*dt
+
 		! Full-step acceleration update
+		! Reset acceleration for the current time step
 		a = 0
-		! Getting partition cells boundaries
+
+		! Extract partition cells index boundaries
 		pbi = partition_boundaries(1)
 		pbj = partition_boundaries(2)
 		pbk = partition_boundaries(3)
-		! Acceleration due to embedded super electrons
-		! ONLY computed if there is AT LEAST one embedded electron
+
+		! Acceleration due to super electrons;
+		! only computed if there is at least one embedded electron
 		if (num_embedded .gt. 0) then
 			do i = -pbi, pbi
-				! To avoid checking for unused cells with index 0
+				! Omit array positions with i index 0 to reduce overhead;
+				! since it is not a valid cell index it does not contain super electrons
 				if (i .ne. 0) then
+
 					do j = -1, -pbj, -1
 						do k = -pbk, pbk
-							! Getting number of super electrons in the cell
+							! Get number of super electrons in the cell
 							super_electron_num = num_super_electrons(i,j,k)
-							! This also avoids unused cells, their super_electron_num is 0
+
+							! Only compute acceleration in cells with at least one super
+							! electron; this condition also omits invalid cells with j index
+							! 0 since they remain initialized with super_electron_num 0
 							if (super_electron_num .gt. 0) then
 								do n = 1, super_electron_num
 									Q = super_electron_charges(i,j,k,n)
@@ -352,140 +393,147 @@ module m4_optimized_trajectory_computation
 									a = a + ak
 								end do
 							end if
+
 						end do
 					end do
+
 				end if
 			end do
 		end if
+
 		! Second half-step velocity update
 		v = v + 0.5*a*dt
+
 	end subroutine time_step_approximate
-	!=======================================================================
-	! Subroutine : compute_trajectory_optimized
-	! Purpose    : Compute the trajectory of a projectile electron using an optimized
-	!              algorithm, including updates for position, velocity, and acceleration.
-	!              The subroutine tracks the electron's path and determines if it gets
-	!              embedded in the material, scattered, or reaches the maximum number of iterations.
-	! Arguments  :
+
+	!=============================================================================
+	! Subroutine: compute_trajectory_optimized
+	! Purpose   : Simulate the trajectory of a projectile electron aimed at the
+	!             dielectric material considering interactions either with both
+	!             the embedded electrons and material atoms, or only with the
+	!             corresponding super electrons depending on the electron's
+	!             distance to the target material in order to optimize total
+	!             simulation time. The trajectory is computed using the Velocity
+	!             Verlet algorithm. When the trajectory simulation is completed,
+	!             the projectile electron can either get embedded in the material
+	!             or be scattered.
+	!             - Each trajectory is simulated using a combination of regular
+	!               and approximated time step updates as implemented in the
+	!               time_step and time_step_approximate subroutines, respectively.
+	!             - Each time step subroutine considers the following interacions:
+	!               - Embedded electrons and material atoms (time_step),
+	!               - Super electrons corresponding to embedded electrons
+	!                 (time_step_approximate).
+	!             - The trajectory simulation ends when one of the following
+	!               conditions is met:
+	!               - The electron is inside the material and a collision with
+	!                 an atomic electron occurs (embedded),
+	!               - The electron is outside the material zone and its distance
+	!                 to the origin exceeds its initial distance (scattered),
+	!               - The electron is outside the material zone and the maximum
+	!                 number of iterations is reached (scattered).
+	!             - A collision with an atomic electron is simulated to occur
+	!               when the distance the projectile electron travels inside
+	!               the material exceeds a random distance drawn from an
+	!               exponential distribution with parameter equal to the
+	!               macroscopic cross section of the material.
+	!             - The final positions of embedded and scattered electrons are
+	!               stored in the respective arrays.
+	!             - A specified number of trajectory points are saved to a file,
+	!               if the electron trajectories saving flag is enabled.
+	! Arguments :
+	!   - logical, intent(in) :: electron_trajectories_saving_enabled
+	!       Flag to determine if the electron trajectories are saved.
 	!   - integer(i8), intent(in) :: num_plot_ploints
-	!       Number of points to plot.
+	!       Maximum number of points to be plotted.
 	!   - integer(i8), intent(in) :: max_iterations
-	!       Maximum number of iterations for the trajectory computation.
+	!       Maximum number of iterations allowed for the trajectory computation.
 	!   - integer, intent(in) :: output_unit
-	!       Output unit for writing the trajectory data.
+	!       Unit number for the output file.
 	!   - integer(i8), intent(in) :: material_boundaries(3)
-	!       Boundaries of the material cells.
+	!       Material grid index boundaries.
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
-	!       Boundaries of the partition cells.
+	!       Partition cell indices boundaries.
 	!   - real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
-	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
-	!       Positions of the atoms within the material cells.
-	!   - integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
-	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:)
-	!       Charges of the atoms within the material cells.
-	!   - real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
-	!         -material_boundaries(2)-1:, -material_boundaries(3)-1:)
-	!       Cube root of the charges of the atoms within the material cells.
+	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
+	!       Positions of material atoms in atomic units (a0).
+	!   - integer, intent(in) :: atomic_numbers(-material_boundaries(1)-1:, &
+	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:)
+	!       Atomic numbers of material atoms.
+	!   - real(dp), intent(in) :: atomic_numbers_cbrt &
+	!       (-material_boundaries(1)-1:, -material_boundaries(2)-1:, &
+	!       -material_boundaries(3)-1:)
+	!       Cubic roots of atomic numbers of material atoms.
 	!   - real(dp), intent(in) :: dt
-	!       Time step for the simulation.
-	!   - integer(i8), intent(inout) :: num_super_electrons( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):)
+	!       Time step size for the simulation in atomic units of time (aut)
+	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):)
 	!       Number of super electrons in each cell.
-	!   - integer, intent(inout) :: super_electron_charges( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):, :)
-	!       Charges of the super electrons in each cell.
-	!   - real(dp), intent(inout) :: super_electron_positions( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):, :, :)
-	!       Positions of the super electrons in each cell.
+	!   - integer, intent(inout) :: super_electron_charges &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :)
+	!       Charges of the super electrons in each cell in atomic units (e).
+	!   - real(dp), intent(inout) :: super_electron_positions &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :, :)
+	!       Positions of the super electrons in each cell in atomic units (a0).
 	!   - real(dp), intent(inout) :: r(3)
-	!       Position vector of the projectile electron.
+	!       Position vector of the electron in atomic units (a0). Updated during
+	!       the simulation.
 	!   - real(dp), intent(inout) :: v(3)
-	!       Velocity vector of the projectile electron.
+	!       Velocity vector of the electron in atomic units (a0/aut). Updated
+	!       during the simulation.
 	!   - real(dp), intent(inout) :: a(3)
-	!       Acceleration vector of the projectile electron.
+	!       Acceleration vector of the electron in atomic units (a0/aut^2).
+	!       Updated during the simulation.
 	!   - integer(i8), intent(inout) :: num_embedded
-	!       Number of embedded electrons.
+	!       Number of embedded electrons. Updated at the end of the trajectory
+	!       simulation if the electron gets embedded.
 	!   - integer(i8), intent(inout) :: num_scattered
-	!       Number of scattered electrons.
+	!       Number of scattered electrons. Updated at the end of the trajectory
+	!       simulation if the electron is scattered.
 	!   - real(dp), intent(inout) :: embedded_positions(:,:)
-	!       Positions of the embedded electrons.
+	!       Positions of embedded electrons in atomic units (a0). Updated at the
+	!       end of the trajectory simulation if the electron gets embedded.
 	!   - real(dp), intent(inout) :: scattered_positions(:,:)
-	!       Positions of the scattered electrons.
-	! Variables  :
-	!   - real(dp) :: initial_distance_to_target
-	!       Initial distance from the projectile electron to the target.
-	!   - logical :: is_embedded, is_scattered, is_max_iteration
-	!       Flags indicating the end conditions of the trajectory computation.
-	!   - logical :: in_material
-	!       Flag indicating if the electron is inside the material.
-	!   - real(dp) :: distance_before_collision, distance_in_material
-	!       Distances related to the embedding process.
-	!   - real(dp) :: previous_position(3), actual_position(3), step_length
-	!       Variables for tracking the electron's position and step length.
-	!   - real(dp) :: distance_to_target, t
-	!       Variables for tracking the distance to the target and the current time step.
-	!   - integer(i8) :: mbi, mbj, mbk
-	!       Boundaries of the material cells.
-	!   - integer(i8) :: i, j
-	!       Loop counters.
-	!=======================================================================
-! TO BE EDITED, AND OMG, WHAT A CHORE IT LOOKS LIKE IT WILL BE
-!Subroutine which computes the trajectory of the i-th projectile electron, out
-!of N electrons in the electron beam, and plots P points in unit file number ou.
-!This subroutine uses the Mixed Method, i.e. it computes the acceleration due to
-!equivalent embedded electrons in the Far Field Regimen when the distance of the
-!i-th projectile is greater than the Far Field effective distance, and the 
-!acceleration due to each invidivual electron otherwise, as well as the
-!acceleration due to the material atoms when it is very close to the material.
-!The projectile interacts with a set of Ne embedded electrons out of a maximum
-!of N total possible embedded electrons and a **SCC** bulk of 
-!N_a=(2*Nx + 1)*(Ny + 1)*(2*Nz + 1) neutral atoms with atomic number Z.
-!The beam initial positions, velocities, and accelerations are stored in the 
-!(N,3) arrarys r, v and a respectively.
-!The embedded and scattered electrons final positions are stored in the (N,3)
-!arrays e_emb and e_sct respectively.
-!The simulation is ended either when the electron distance dk to the origin of 
-!coordinates (which approximates the center of the bulk) is greater than that 
-!initial distance d0, or when the number of iterations k is equal or greater 
-!than the estimated number of iterations T.
-!The simulation is also ended if the electron gets embedded on the bulk, at
-!which point the number of embedded electrons N_e is updated/increased.
-!The information for the Mix Method simulation is stored in the additional 
-!arrays that have been previously defined in the add_electron_to_bin
-!subroutine.
+	!       Positions of scattered electrons in atomic units (a0). Updated at the
+	!       end of the trajectory simulation if the electron is scattered.
+	!=============================================================================
 	subroutine compute_trajectory_optimized &
 		(electron_trajectories_saving_enabled, num_plot_ploints, max_iterations, &
-		output_unit, material_boundaries, atom_positions, atom_charges, & 
-		atom_charges_cbrt, partition_boundaries, num_super_electrons, &
+		output_unit, material_boundaries, atom_positions, atomic_numbers, &
+		atomic_numbers_cbrt, partition_boundaries, num_super_electrons, &
 		super_electron_positions, super_electron_charges, dt, r, v, a, &
 		num_embedded, num_scattered, embedded_positions, scattered_positions)
 		implicit none
+
+		! Input/Output variables
 		logical, intent(in) :: electron_trajectories_saving_enabled
 		integer(i8), intent(in) :: num_plot_ploints, max_iterations
 		integer, intent(in) :: output_unit
 		integer(i8), intent(in) :: material_boundaries(3), partition_boundaries(3)
 		real(dp), intent(in) :: atom_positions(-material_boundaries(1)-1:, &
 			-material_boundaries(2)-1:, -material_boundaries(3)-1:, :)
-		integer, intent(in) :: atom_charges(-material_boundaries(1)-1:, &
+		integer, intent(in) :: atomic_numbers(-material_boundaries(1)-1:, &
 			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
-		real(dp), intent(in) :: atom_charges_cbrt(-material_boundaries(1)-1:, &
+		real(dp), intent(in) :: atomic_numbers_cbrt(-material_boundaries(1)-1:, &
 			-material_boundaries(2)-1:, -material_boundaries(3)-1:)
 		real(dp), intent(in) :: dt
-		integer(i8), intent(inout) :: num_super_electrons( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer(i8), intent(inout) :: num_super_electrons &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):)
-		integer, intent(inout) :: super_electron_charges( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer, intent(inout) :: super_electron_charges &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :)
-		real(dp), intent(inout) :: super_electron_positions( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		real(dp), intent(inout) :: super_electron_positions &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :, :)
 		real(dp), intent(inout) :: r(3), v(3), a(3)
 		integer(i8), intent(inout) :: num_embedded, num_scattered
 		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
+
+		! Local variables
 		real(dp) :: initial_distance_to_target
 		logical :: is_embedded, is_scattered, is_max_iteration
 		logical :: in_material
@@ -494,81 +542,101 @@ module m4_optimized_trajectory_computation
 		real(dp) :: distance_to_target, t
 		integer(i8) :: mbi, mbj, mbk
 		integer(i8) :: i, j
-		! Initializing end conditions as false
+
+		! Initialize end condition flags
 		is_embedded = .false.
 		is_scattered = .false.
 		is_max_iteration = .false.
-		! Initializing variables related to end conditions
-		i = 0
+
+		! Initialize embedding end condition variable: inside material flag
 		in_material = .false.
+
+		! Initialize scattering end condition variables: distances to target
 		initial_distance_to_target = norm2(r)
 		distance_to_target = initial_distance_to_target
-		! Initialize points to be plotted counter
+
+		! Intialize maximum iterations end condition variable: iteration counter
+		i = 0
+
+		! Initialize plot points counter
 		j = 0
+
+		! Main simulation loop
 		do while (.not.(is_embedded .or. is_scattered .or. is_max_iteration))
-			t = i*dt ! t0 = 0, just to print to file, not needed for computations
-			! Plotting only P points
+			! Current time
+			t = i*dt
+
+			! Plot trajectory points, if conditions are met
 			if (electron_trajectories_saving_enabled .and. &
 				(mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. &
 				j .lt. num_plot_ploints) then
-				! Write values to file
+				! Write time and position to output file
 				write(output_unit,*) t, r
 				j = j + 1
 			end if
-			! Computing next Velocity Verlet time step integration depending on the
-			! projectile electron distance to target material center in relation to 
-			! the EFFECTIVE_DISTANCE and whether or not it's in the material
+
+			! Compute next time step using Velocity Verlet algorithm;
+			! Update electron position r, velocity v, and acceleration a;
+			! Time step update: Approximated, projectile electron's distance to target
+			! material is greater than EFFECTIVE_DISTANCE and not in material zone
 			if (distance_to_target .gt. EFFECTIVE_DISTANCE .and. &
 			.not. in_material) then
-				! Computing next Velocity Verlet time step integration using far zone
-				! approximation
 				call time_step_approximate &
 				(num_embedded, partition_boundaries, num_super_electrons, &
 				super_electron_charges, super_electron_positions, dt, r, v, a)
+
+			! Time step update: Regular, projectile electron's distance to target
+			! material is less than EFFECTIVE_DISTANCE or in material zone
 			else
-				! Computing next Velocity Verlet time step integration using near zone
-				! approximation
 				call time_step &
 				(num_embedded, material_boundaries, embedded_positions, &
-				atom_positions, atom_charges, atom_charges_cbrt, dt, r, v, a)
+				atom_positions, atomic_numbers, atomic_numbers_cbrt, dt, r, v, a)
+
 			end if
-			! Updating variables related to end conditions for distance and iterations
+
+			! Update distance to target and iteration count
 			distance_to_target = norm2(r)
 			i = i + 1
-			! Check if any of the end conditions are met
-			! End condition for embedded electrons
-			! The electron must be below material level
+
+			! Check for embedding end condition: electron is inside the material and
+			! a collision with an atomic electron occurs
 			if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-				! ONLY the first time it enters the material
-				! Generate random number following exponential distribution
-				! Initialize actual electron position (inside material)
-				! Initialize electron distance travelled inside material
+				! Only on first entry into material zone
 				if (.not.(in_material)) then
+					! Update inside material flag
 					in_material = .true.
+
+					! Generate travel distance before collision with atomic electron
 					call random_exponential(CROSS_SECTION_SIO2, distance_before_collision)
+
+					! Initialize distance traveled within material
 					actual_position = r
 					distance_in_material = 0
 				end if
-				! Updating variables related to end condition for embedding due to 
-				! random atomic electron collision 
+
+				! Update position and track distance traveled within material
 				previous_position = actual_position
 				actual_position = r
 				step_length = norm2(actual_position - previous_position)
 				distance_in_material = distance_in_material + step_length
-				! Did the electron got embedded due to collision with atomic electron?
+
+				! Check if electron gets embedded due to collision with atomic electron
 				if (distance_in_material .ge. distance_before_collision) then
 					is_embedded = .true.
 					num_embedded = num_embedded + 1
 					embedded_positions(num_embedded,:) = r
-					! Updating super electron arrays based on new embedded electron
+
+					! Update embedded condition flag, embedded number and positions
 					call update_super_electron_in_cell &
-					(r, partition_boundaries, num_super_electrons, & 
+					(r, partition_boundaries, num_super_electrons, &
 					super_electron_charges, super_electron_positions)
+
+					! Print end condition information to console
 					print*, "Trajectory end --> Electron is embedded"
 					print*, "Total iterations:", i
 					print*, "Final electron position:", r
 					print*, " Distance before collision:", distance_before_collision
-					print*, " Distance travelled inside material:", distance_in_material
+					print*, " Distance traveled inside material:", distance_in_material
 					print*, " Material boundaries:"
 					mbi = material_boundaries(1)
 					mbj = material_boundaries(2)
@@ -579,12 +647,17 @@ module m4_optimized_trajectory_computation
 					print*
 				end if
 			end if
-			! End condition for total distance travelled
+
+			! Check for scattering end condition: electron is outside the material
+			! and exceeds its initial distance to target
 			if (distance_to_target .gt. initial_distance_to_target .and. &
 			r(2) .gt. 0) then
+				! Update scattered condition flag, scattered number and positions
 				is_scattered = .true.
 				num_scattered = num_scattered + 1
 				scattered_positions(num_scattered,:) = r
+
+				! Print end condition information to console
 				print*, "Trajectory end --> Electron is scattered"
 				print*, "Total iterations:", i
 				print*, "Final electron position:", r
@@ -592,78 +665,101 @@ module m4_optimized_trajectory_computation
 				print*, " Final distance to target:", distance_to_target
 				print*
 			end if
-			! End condition for maximum number of iterations
+
+			! Check for scattering end condition: electron is outside the material
+			! and maximum number of iterations is exceeded
 			if (i .ge. max_iterations) then
+				! Update maximum iterations and scattered conditions flag, scattered
+				! number and positions
 				is_max_iteration = .true.
-				print*, "Trajectory end --> Maximum number of iterations reached"
+				is_scattered = .true.
+				num_scattered = num_scattered + 1
+				scattered_positions(num_scattered,:) = r
+
+				! Print end condition information to console
+				print*, "Trajectory end --> Electron is scattered"
 				print*, "Total iterations:", i
 				print*, "Final electron position:", r
+				print*, " Maximum number of iterations reached!"
 				print*, " Maximum number of iterations:", max_iterations
 				print*
 			end if
+
 		end do
+
 	end subroutine compute_trajectory_optimized
-	!=======================================================================
-	! Subroutine : write_final_super_electron_distribution
-	! Purpose    : Write the final distribution of super electrons, including
-	!              their charges and positions, to a file.
-	! Arguments  :
+
+	!=============================================================================
+	! Subroutine: write_final_super_electron_distribution
+	! Purpose   : Write the final distribution of super electrons, including
+	!             their charges and positions, to a file.
+	! Arguments :
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
-	!       Boundaries of the partition cells.
-	!   - integer(i8), intent(in) :: num_super_electrons( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):)
+	!       Partition cells indices boundaries.
+	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):)
 	!       Number of super electrons in each cell.
-	!   - integer, intent(in) :: super_electron_charges( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):, :)
-	!       Charges of the super electrons in each cell.
-	!   - real(dp), intent(in) :: super_electron_positions( &
-	!         -partition_boundaries(1):, -partition_boundaries(2):, &
-	!         -partition_boundaries(3):, :, :)
-	!       Positions of the super electrons in each cell.
-	! Variables  :
-	!   - integer(i8) :: pbi, pbj, pbk
-	!       Boundaries of the partition cells.
-	!   - integer(i8) :: i, j, k, n
-	!       Loop counters.
-	!=======================================================================
+	!   - integer, intent(inout) :: super_electron_charges &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :)
+	!       Charges of the super electrons in each cell in atomic units (e).
+	!   - real(dp), intent(inout) :: super_electron_positions &
+	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
+	!       -partition_boundaries(3):, :, :)
+	!       Positions of the super electrons in each cell in atomic units (a0).
+	!=============================================================================
 	subroutine write_final_super_electron_distribution &
 		(partition_boundaries, num_super_electrons, super_electron_charges, &
 		super_electron_positions)
 		implicit none
+
+		! Input variables
 		integer(i8), intent(in) :: partition_boundaries(3)
-		integer(i8), intent(in) :: num_super_electrons( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer(i8), intent(in) :: num_super_electrons &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):)
-		integer, intent(in) :: super_electron_charges( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		integer, intent(in) :: super_electron_charges &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :)
-		real(dp), intent(in) :: super_electron_positions( &
-			-partition_boundaries(1):, -partition_boundaries(2):, &
+		real(dp), intent(in) :: super_electron_positions &
+			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :, :)
+
+		! Local variables
 		integer(i8) :: pbi, pbj, pbk
 		integer(i8) :: i, j, k, n
-		! Getting partition cells boundaries
+
+		! Extract partition cells index boundaries
 		pbi = partition_boundaries(1)
 		pbj = partition_boundaries(2)
 		pbk = partition_boundaries(3)
+
+		! Open file to save the final super electron distribution
 		open(unit=42, file='final_super_electron_distribution.dat', &
 			status='replace', action='write')
+
+			! Loop over all partition cells and write super electron data to the file
 			do i = -pbi, pbi
 				do j = -1, -pbj, -1
 					do k = -pbk, pbk
-						! If there are more than zero super electrons in the i, j, k cell,
-						! get the super electron(s) charges and positions
+
+						! Get super electron(s) charges and positions if there is at least
+						! one super electron in the cell
 						if (num_super_electrons(i,j,k) .gt. 0) then
 							do n = 1, num_super_electrons(i,j,k)
 								write(42, *) i, j, k, n, super_electron_charges(i,j,k,n), &
 								super_electron_positions(i,j,k,n,:)
 							end do
 						end if
+
 					end do
 				end do
 			end do
+
+		! Close output file
 		close(42)
+
 	end subroutine write_final_super_electron_distribution
+
 end module m4_optimized_trajectory_computation
