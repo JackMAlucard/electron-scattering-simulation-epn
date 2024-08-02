@@ -233,8 +233,9 @@ module m3_trajectory_computation
 	!   - integer, intent(in) :: atomic_numbers(-material_boundaries(1)-1:, &
 	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:)
 	!       Atomic numbers of material atoms.
-	!   - real(dp), intent(in) :: atomic_numbers_cbrt(-material_boundaries(1)-1:, &
-	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:)
+	!   - real(dp), intent(in) :: atomic_numbers_cbrt &
+	!       (-material_boundaries(1)-1:, -material_boundaries(2)-1:, &
+	!       -material_boundaries(3)-1:)
 	!       Cubic roots of the atomic numbers of material atoms.
 	!   - real(dp), intent(in) :: dt
 	!       Time step size for the simulation in atomic units of time (aut)
@@ -346,7 +347,7 @@ module m3_trajectory_computation
 	!   - integer(i8), intent(in) :: num_plot_ploints
 	!       Maximum number of points to be plotted.
 	!   - integer(i8), intent(in) :: max_iterations
-	!       Maximum number of iterations allowed for the simulation.
+	!       Maximum number of iterations allowed for the trajectory computation.
 	!   - integer, intent(in) :: output_unit
 	!       Unit number for the output file.
 	!   - integer(i8), intent(in) :: material_boundaries(3)
@@ -357,8 +358,9 @@ module m3_trajectory_computation
 	!   - integer, intent(in) :: atomic_numbers(-material_boundaries(1)-1:, &
 	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:)
 	!       Atomic numbers of material atoms.
-	!   - real(dp), intent(in) :: atomic_numbers_cbrt(-material_boundaries(1)-1:, &
-	!       -material_boundaries(2)-1:, -material_boundaries(3)-1:)
+	!   - real(dp), intent(in) :: atomic_numbers_cbrt &
+	!       (-material_boundaries(1)-1:, -material_boundaries(2)-1:, &
+	!       -material_boundaries(3)-1:)
 	!       Cubic roots of atomic numbers of material atoms.
 	!   - real(dp), intent(in) :: dt
 	!       Time step size for the simulation in atomic units of time (aut)
