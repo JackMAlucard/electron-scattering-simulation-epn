@@ -439,33 +439,33 @@ module m0_utilities
 		integer, intent(in) :: output_unit
 		logical, intent(in) :: electron_trajectories_saving_enabled
 
-		! Open file to write electron trajectories, if trajectory saving is enabled
+		! Open file to save electron trajectories, if trajectory saving is enabled
 		if (electron_trajectories_saving_enabled) then
 			open(unit=output_unit+1, file="electron_trajectories.dat", &
 				status='replace', action='write')
 		end if
 
-		! Open file to write the final position of embedded electrons
+		! Open file to save the final position of embedded electrons
 		open(unit=output_unit+2, file='embedded_positions.dat', &
 			status='replace', action='write')
 
-		! Open file to write the final position of scattered electrons
+		! Open file to save the final position of scattered electrons
 		open(unit=output_unit+3, file='scattered_positions.dat', &
 			status='replace', action='write')
 
-		! Open file to write the scattered electrons scattering angles
+		! Open file to save the scattered electrons scattering angles
 		open(unit=output_unit+4, file='scattering_angles.dat', &
 			status='replace', action='write')
 
-		! Open file to write all final electron positions
+		! Open file to save all final electron positions
 		open(unit=output_unit+5, file='final_electron_positions.dat', &
 			status='replace', action='write')
 
-		! Open file to write the time evolution of the electrons' final state
+		! Open file to save the electrons' final state evolution
 		open(unit=output_unit+6, file='final_state_evolution.dat', &
 			status='replace', action='write')
 
-		! Open file to write the iteration and total simulation times
+		! Open file to save each iteration and total simulation times
 		open(unit=output_unit+7, file='simulation_times.dat', &
 			status='replace', action='write')
 
@@ -499,7 +499,7 @@ module m0_utilities
 		integer(i8), intent(in) :: num_embedded, num_scattered
 		real(dp), intent(in) :: total_time
 
-		! Open file to write simulation status information
+		! Open file to save simulation status information
 		open(unit=output_unit, file='simulation_info.dat', &
 			status='replace', action='write')
 
