@@ -95,7 +95,7 @@ module m4_optimized_trajectory_computation
 	end subroutine set_up_cells_and_super_electrons
 
 	!=============================================================================
-	! Subroutine: get_cell_indexes
+	! Subroutine: get_cell_indices
 	! Purpose   : Determine the cell indices within the partitioned material
 	!             zone corresponding to a given position considering the
 	!             partition cells' boundary limits.
@@ -104,16 +104,16 @@ module m4_optimized_trajectory_computation
 	!       Position vector in atomic units (a0)
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
 	!       Partition cells indices boundaries.
-	!   - integer(i8), intent(out) :: cell_indexes(3)
+	!   - integer(i8), intent(out) :: cell_indices(3)
 	!       Computed cell indices corresponding to the position vector.
 	!=============================================================================
-	subroutine get_cell_indexes(r, partition_boundaries, cell_indexes)
+	subroutine get_cell_indices(r, partition_boundaries, cell_indices)
 		implicit none
 
 		! Input/Output variables
 		real(dp), intent(in) :: r(3)
 		integer(i8), intent(in) :: partition_boundaries(3)
-		integer(i8), intent(out) :: cell_indexes(3)
+		integer(i8), intent(out) :: cell_indices(3)
 
 		! Local variables
 		integer(i8) :: pbi, pbj, pbk
@@ -151,9 +151,9 @@ module m4_optimized_trajectory_computation
 		end if
 
 		! Store the partition cell indices
-		cell_indexes = (/i, j, k/)
+		cell_indices = (/i, j, k/)
 
-	end subroutine get_cell_indexes
+	end subroutine get_cell_indices
 
 	!=============================================================================
 	! Subroutine: update_super_electron_in_cell
@@ -196,15 +196,15 @@ module m4_optimized_trajectory_computation
 			-partition_boundaries(3):, :, :)
 
 		! Local variables
-		integer(i8) :: cell_indexes(3), i, j, k, n
+		integer(i8) :: cell_indices(3), i, j, k, n
 		integer :: super_electron_charge
 		real(dp) :: super_electron_r(3)
 
 		! Get embedded electron's cell indices based on its position r
-		call get_cell_indexes(r, partition_boundaries, cell_indexes)
-		i = cell_indexes(1)
-		j = cell_indexes(2)
-		k = cell_indexes(3)
+		call get_cell_indices(r, partition_boundaries, cell_indices)
+		i = cell_indices(1)
+		j = cell_indices(2)
+		k = cell_indices(3)
 
 		! Get number of super electrons in the cell
 		n = num_super_electrons(i,j,k)
@@ -248,7 +248,7 @@ module m4_optimized_trajectory_computation
 
 		! Print updated super electron info to console
 		print*, "Super electron arrays updated!"
-		print*, " Cell indexes:", i, j, k
+		print*, " Cell indices:", i, j, k
 		print*, " New super electron number:", n
 		print*, " New super electron charge:", super_electron_charge
 		print*, " New super electron position:", super_electron_r

@@ -64,8 +64,8 @@ module m3_trajectory_computation
 	end subroutine number_of_iterations_estimation
 
 	!=============================================================================
-	! Subroutine: get_nearest_atom_indexes
-	! Purpose   : Determine the indexes of the nearest atom in the silica (SiO2)
+	! Subroutine: get_nearest_atom_indices
+	! Purpose   : Determine the indices of the nearest atom in the silica (SiO2)
 	!             material grid relative to the position of a projectile electron,
 	!             considering the material's boundary limits.
 	! Arguments :
@@ -73,16 +73,16 @@ module m3_trajectory_computation
 	!       Position vector of the projectile electron in atomic units (a0).
 	!   - integer(i8), intent(in) :: material_boundaries(3)
 	!       Array containing each material grid index boundary.
-	!   - integer(i8), intent(out) :: atom_indexes(3)
-	!       Array containing the indexes of the nearest atom in the material grid.
+	!   - integer(i8), intent(out) :: atom_indices(3)
+	!       Array containing the indices of the nearest atom in the material grid.
 	!=============================================================================
-	subroutine get_nearest_atom_indexes(r, material_boundaries, atom_indexes)
+	subroutine get_nearest_atom_indices(r, material_boundaries, atom_indices)
 		implicit none
 
 		! Input/Output variables
 		real(dp), intent(in) :: r(3)
 		integer(i8), intent(in) :: material_boundaries(3)
-		integer(i8), intent(out) :: atom_indexes(3)
+		integer(i8), intent(out) :: atom_indices(3)
 
 		! Local variables
 		integer(i8) :: mbi, mbj, mbk, i, j, k
@@ -107,10 +107,10 @@ module m3_trajectory_computation
 		if (k .gt. mbk) k = mbk
 		if (k .lt. -mbk) k = -mbk
 
-		! Store the nearest atom indexes
-		atom_indexes = (/i, j, k/)
+		! Store the nearest atom indices
+		atom_indices = (/i, j, k/)
 
-	end subroutine get_nearest_atom_indexes
+	end subroutine get_nearest_atom_indices
 
 	!=============================================================================
 	! Subroutine: acceleration_due_to_electron
@@ -269,7 +269,7 @@ module m3_trajectory_computation
 		! Local variables
 		real(dp) :: rt(3), ak(3), cbrt_Z
 		integer :: Z
-		integer(i8) :: atom_indexes(3)
+		integer(i8) :: atom_indices(3)
 		integer(i8) :: i, j, k
 
 		! Half-step velocity update
@@ -294,10 +294,10 @@ module m3_trajectory_computation
 
 		! Acceleration due to nearest material atom and its closest neighbors
 		if (r(2) .lt. MATERIAL_HEIGHT_SIO2) then
-			call get_nearest_atom_indexes(r, material_boundaries, atom_indexes)
-			do i = atom_indexes(1) - 1, atom_indexes(1) + 1
-				do j = atom_indexes(2) - 1, atom_indexes(2) + 1
-					do k = atom_indexes(3) - 1, atom_indexes(3) + 1
+			call get_nearest_atom_indices(r, material_boundaries, atom_indices)
+			do i = atom_indices(1) - 1, atom_indices(1) + 1
+				do j = atom_indices(2) - 1, atom_indices(2) + 1
+					do k = atom_indices(3) - 1, atom_indices(3) + 1
 						! Only compute acceleration in positions with atoms
 						Z = atomic_numbers(i,j,k)
 						if (Z .ne. 0) then

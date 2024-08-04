@@ -352,7 +352,7 @@ module m0_utilities
 	!   - real(dp), intent(out) :: grazing_angle
 	!       Grazing angle of the electron beam in degrees (º).
 	!   - integer(i8), intent(out) :: material_boundaries(3)
-	!       Indexes of the material model grid boundaries.
+	!       Indices of the material model grid boundaries.
 	!   - logical, intent(out) :: beam_model_output_saving_enabled
 	!       Flag to enable saving beam model positions and velocities.
 	!   - logical, intent(out) :: material_model_output_saving_enabled
