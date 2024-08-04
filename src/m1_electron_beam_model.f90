@@ -40,7 +40,7 @@ module m1_electron_beam_model
 	end subroutine electron_beam_parameters_unit_conversion
 
 	!=============================================================================
-	! Subroutine: setup_electron_beam_model
+	! Subroutine: set_up_electron_beam_model
 	! Purpose   : Set up the electron beam model by initializing the
 	!             positions, velocities, and accelerations for the electrons.
 	!             - Positions are initially located on the xy-plane and follow
@@ -91,7 +91,7 @@ module m1_electron_beam_model
 	!       Array to store the initial accelerations of the electrons in
 	!       atomic units (a0/aut^2).
 	!=============================================================================
-  subroutine setup_electron_beam_model &
+  subroutine set_up_electron_beam_model &
 		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
 		beam_target_distance, grazing_angle, output_saving_enabled, &
 		electron_positions, electron_velocities, electron_accelerations)
@@ -186,6 +186,6 @@ module m1_electron_beam_model
 			close(42)
 		end if
 
-	end subroutine setup_electron_beam_model
+	end subroutine set_up_electron_beam_model
 
 end module m1_electron_beam_model

@@ -6,7 +6,7 @@ module m2_dielectric_material_model
 	implicit none
 	contains
 	!=============================================================================
-	! Subroutine: setup_simple_silica_model
+	! Subroutine: set_up_simple_silica_model
 	! Purpose   : Set up a simple silica (SiO2) model by generating atom
 	!             positions, atomic numbers, and cubic roots of atomic
 	!             numbers on a 3D grid within the specified material grid
@@ -41,7 +41,7 @@ module m2_dielectric_material_model
 	!   - real(dp), allocatable, intent(out) :: atomic_numbers_cbrt(:,:,:)
 	!       Array to store the cubic roots of the atomic numbers of the atoms.
 	!=============================================================================
-	subroutine setup_simple_silica_model &
+	subroutine set_up_simple_silica_model &
 		(material_boundaries, output_saving_enabled, atom_positions, &
 		atomic_numbers, atomic_numbers_cbrt)
 		implicit none
@@ -123,6 +123,6 @@ module m2_dielectric_material_model
 			close(42)
 		end if
 
-	end subroutine setup_simple_silica_model
+	end subroutine set_up_simple_silica_model
 
 end module m2_dielectric_material_model

@@ -11,7 +11,7 @@ module m4_optimized_trajectory_computation
 	implicit none
 	contains
 	!=============================================================================
-	! Subroutine: setup_cells_and_super_electrons
+	! Subroutine: set_up_cells_and_super_electrons
 	! Purpose   : Partition the material zone into cells by initializing the
 	!             super electron number, charges, and positions arrays.
 	!             - The partition cells are used to merge embedded electrons
@@ -46,7 +46,7 @@ module m4_optimized_trajectory_computation
 	!       (:,:,:,:,:)
 	!       Positions of the super electrons in each cell in atomic units (a0).
 	!=============================================================================
-	subroutine setup_cells_and_super_electrons &
+	subroutine set_up_cells_and_super_electrons &
 		(num_electrons, material_boundaries, partition_boundaries, &
 		num_super_electrons, super_electron_charges, super_electron_positions)
 		implicit none
@@ -92,7 +92,7 @@ module m4_optimized_trajectory_computation
 		! positions of the electrons that form the super electron
 		super_electron_positions = 0
 
-	end subroutine setup_cells_and_super_electrons
+	end subroutine set_up_cells_and_super_electrons
 
 	!=============================================================================
 	! Subroutine: get_cell_indexes

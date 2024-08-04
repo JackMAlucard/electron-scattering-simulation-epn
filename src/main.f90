@@ -5,10 +5,10 @@ program main
 		write_simulation_status_information
 
 	use m1_electron_beam_model, &
-		only: electron_beam_parameters_unit_conversion, setup_electron_beam_model
+		only: electron_beam_parameters_unit_conversion, set_up_electron_beam_model
 
 	use m2_dielectric_material_model, &
-		only: setup_simple_silica_model
+		only: set_up_simple_silica_model
 
 	use m3_trajectory_computation, &
 		only: number_of_iterations_estimation, compute_trajectory, &
@@ -82,14 +82,14 @@ program main
 
 	! Initialize the positions, velocities, and accelerations for the electrons
 	! in the electron beam model
-	call setup_electron_beam_model &
+	call set_up_electron_beam_model &
 		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
 		beam_target_distance, grazing_angle, beam_model_output_saving_enabled, &
 		electron_positions, electron_velocities, electron_accelerations)
 
 	! Initialize atom positions, atomic numbers, and cubic root of atomic numbers
 	! in the dielectric material model
-	call setup_simple_silica_model &
+	call set_up_simple_silica_model &
 		(material_boundaries, material_model_output_saving_enabled, &
 		atom_positions, atomic_numbers, atomic_numbers_cbrt)
 

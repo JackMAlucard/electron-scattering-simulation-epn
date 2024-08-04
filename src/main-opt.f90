@@ -5,16 +5,16 @@ program main
 		write_simulation_status_information
 
 	use m1_electron_beam_model, &
-		only: electron_beam_parameters_unit_conversion, setup_electron_beam_model
+		only: electron_beam_parameters_unit_conversion, set_up_electron_beam_model
 
 	use m2_dielectric_material_model, &
-		only: setup_simple_silica_model
+		only: set_up_simple_silica_model
 
 	use m3_trajectory_computation, &
 		only: number_of_iterations_estimation, compute_scattering_angles
 
 	use m4_optimized_trajectory_computation, &
-		only: setup_cells_and_super_electrons, compute_trajectory_optimized, &
+		only: set_up_cells_and_super_electrons, compute_trajectory_optimized, &
 		write_final_super_electron_distribution
 
 	implicit none
@@ -88,14 +88,14 @@ program main
 
 	! Initialize the positions, velocities, and accelerations for the electrons
 	! in the electron beam model
-	call setup_electron_beam_model &
+	call set_up_electron_beam_model &
 		(num_electrons, spot_size_factor, beam_energy, energy_spread, &
 		beam_target_distance, grazing_angle, beam_model_output_saving_enabled, &
 		electron_positions, electron_velocities, electron_accelerations)
 
 	! Initialize atom positions, atomic numbers, and cubic root of atomic numbers
 	! in the dielectric material model
-	call setup_simple_silica_model &
+	call set_up_simple_silica_model &
 		(material_boundaries, material_model_output_saving_enabled, &
 		atom_positions, atomic_numbers, atomic_numbers_cbrt)
 
@@ -104,7 +104,7 @@ program main
 	!=============================================================================
 
 	! Set up partition cells and super electron arrays
-	call setup_cells_and_super_electrons &
+	call set_up_cells_and_super_electrons &
 		(num_electrons, material_boundaries, partition_boundaries, &
 		num_super_electrons, super_electron_charges, super_electron_positions)
 
