@@ -307,15 +307,15 @@ module m4_optimized_trajectory_computation
 	!       Number of embedded electrons.
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
 	!       Partition cells indices boundaries.
-	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!   - integer(i8), intent(in) :: num_super_electrons &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):)
 	!       Number of super electrons in each cell.
-	!   - integer, intent(inout) :: super_electron_charges &
+	!   - integer, intent(in) :: super_electron_charges &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):, :)
 	!       Charges of the super electrons in each cell in atomic units (e).
-	!   - real(dp), intent(inout) :: super_electron_positions &
+	!   - real(dp), intent(in) :: super_electron_positions &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):, :, :)
 	!       Positions of the super electrons in each cell in atomic units (a0).
@@ -696,15 +696,15 @@ module m4_optimized_trajectory_computation
 	! Arguments :
 	!   - integer(i8), intent(in) :: partition_boundaries(3)
 	!       Partition cells indices boundaries.
-	!   - integer(i8), intent(inout) :: num_super_electrons &
+	!   - integer(i8), intent(in) :: num_super_electrons &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):)
 	!       Number of super electrons in each cell.
-	!   - integer, intent(inout) :: super_electron_charges &
+	!   - integer, intent(in) :: super_electron_charges &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):, :)
 	!       Charges of the super electrons in each cell in atomic units (e).
-	!   - real(dp), intent(inout) :: super_electron_positions &
+	!   - real(dp), intent(in) :: super_electron_positions &
 	!       (-partition_boundaries(1):, -partition_boundaries(2):, &
 	!       -partition_boundaries(3):, :, :)
 	!       Positions of the super electrons in each cell in atomic units (a0).
@@ -716,12 +716,10 @@ module m4_optimized_trajectory_computation
 
 		! Input variables
 		integer(i8), intent(in) :: partition_boundaries(3)
-		integer(i8), intent(in) :: num_super_electrons &
-			(-partition_boundaries(1):, -partition_boundaries(2):, &
-			-partition_boundaries(3):)
-		integer, intent(in) :: super_electron_charges &
-			(-partition_boundaries(1):, -partition_boundaries(2):, &
-			-partition_boundaries(3):, :)
+		integer(i8), intent(in) :: num_super_electrons(-partition_boundaries(1):, &
+			-partition_boundaries(2): -partition_boundaries(3):)
+		integer, intent(in) :: super_electron_charges(-partition_boundaries(1):, &
+			-partition_boundaries(2):, -partition_boundaries(3):, :)
 		real(dp), intent(in) :: super_electron_positions &
 			(-partition_boundaries(1):, -partition_boundaries(2):, &
 			-partition_boundaries(3):, :, :)
