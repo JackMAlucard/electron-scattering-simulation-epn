@@ -717,7 +717,7 @@ module m4_optimized_trajectory_computation
 		! Input variables
 		integer(i8), intent(in) :: partition_boundaries(3)
 		integer(i8), intent(in) :: num_super_electrons(-partition_boundaries(1):, &
-			-partition_boundaries(2): -partition_boundaries(3):)
+			-partition_boundaries(2):, -partition_boundaries(3):)
 		integer, intent(in) :: super_electron_charges(-partition_boundaries(1):, &
 			-partition_boundaries(2):, -partition_boundaries(3):, :)
 		real(dp), intent(in) :: super_electron_positions &
