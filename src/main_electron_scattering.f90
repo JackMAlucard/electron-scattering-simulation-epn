@@ -1,4 +1,80 @@
-program main
+!===============================================================================
+! Program    : main_electron_scattering
+! Purpose    : Simulate the behavior of an electron beam interacting with a
+!              dielectric material by computing the trajectories of each
+!              electron in the beam sequentially.
+! Description:
+!   This program executes the following main steps:
+!     1. Set random seeds for simulation reproducibility.
+!     2. Read simulation input parameters from input file.
+!     3. Set up the electron beam model and dielectric material model.
+!     4. Compute the trajectories of individual electrons sequentially.
+!     5. Determine whether each electron gets embedded or is scattered.
+!     6. Compute scattering angles for scattered electrons.
+!     7. Save simulation results to output files for further analysis.
+! Input      :
+!   The following input parameters are read from the 'input.txt' file:
+!     - beam_energy
+!         Beam energy in kiloelectronvolts (keV), real
+!		  - grazing_angle
+!         Grazing angle in degrees (º), real
+!     - num_electrons
+!         Number of electrons in the beam, integer
+!     - energy_spread
+!         Beam energy spread as a percentage of the beam energy (%), real
+!     - spot_size_factor
+!         Beam spot size scale factor, real
+!     - beam_target_distance
+!         Beam-target material distance in angstroms (Å), real
+!     - material_boundaries
+!         Material model grid index boundaries, three integers
+!     - num_plot_ploints
+!         Number of points to be plotted for each electron trajectory for
+!         when electron trajectories saving flag is enabled, integer
+!     - dt
+!         Time step size in atomic units of time (aut), real
+!     - beam_model_output_saving_enabled
+!         Flag for beam model output saving, boolean
+!		  - material_model_output_saving_enabled
+!         Flag for material model output saving, boolean
+!		  - electron_trajectories_saving_enabled
+!         Flag for electron trajectories saving, boolean
+! Output     :
+!   The output values corresponding to simulated magnitudes are all in atomic
+!   units. The output files and the format of each of their lines are:
+!     - electron_trajectories.dat (optional)
+!         Electron trajectories, if trajectory saving is enabled. Each
+!         trajectory in the file is separated by two blank lines.
+!         Output format:
+!           time, x-coordinate, y-coordinate, z-coordinate
+!     - embedded_positions.dat
+!         Final positions of embedded electrons. Output format:
+!           electron index, x-coordinate, y-coordinate, z-coordinate
+!     - scattered_positions.dat
+!         Final positions of scattered electrons. Output format:
+!           electron index, x-coordinate, y-coordinate, z-coordinate
+!     - scattering_angles.dat
+!         Scattering angles of scattered electrons. Output format:
+!           electron index, elevation angle alpha, azimuthal angle beta
+!     - final_electron_positions.dat
+!         Final positions of all electrons. Output format:
+!           electron index, x-coordinate, y-coordinate, z-coordinate
+!     - final_state_evolution.dat
+!         Evolution of the final state of the electrons in the beam.
+!         Output format:
+!           electron index, number of electrons embedded up to current electron,
+!           number of electrons scattered up to current electron,
+!           fraction of electrons embedded up to current electron,
+!           fraction of electrons scattered up to current electron
+!     - simulation_times.dat
+!         Simulation time of each electron trajectory and total simulation time.
+!         Output format:
+!           electron index, current electron trajectory simulation time,
+!           total simulation time up to current electron
+!     - simulation_info.dat
+!         Simulation status information. It follows a specific text format.
+!===============================================================================
+program main_electron_scattering
 
 	use m0_utilities, &
 		only: i8, dp, read_input_parameters, open_output_files, &
@@ -11,15 +87,12 @@ program main
 		only: set_up_simple_silica_model
 
 	use m3_trajectory_computation, &
-		only: number_of_iterations_estimation, compute_scattering_angles
-
-	use m4_optimized_trajectory_computation, &
-		only: set_up_cells_and_super_electrons, compute_trajectory_optimized, &
-		write_final_super_electron_distribution
+		only: number_of_iterations_estimation, compute_trajectory, &
+		compute_scattering_angles
 
 	implicit none
 	!=============================================================================
-	! MAIN PROGRAM VARIABLES
+	! PROGRAM VARIABLES DECLARATION
 	!=============================================================================
 
 	! Electron beam model variables
@@ -38,13 +111,10 @@ program main
 	real(dp), allocatable :: atomic_numbers_cbrt(:,:,:)
 	logical :: material_model_output_saving_enabled
 
-	! Optimized electron trajectories' computation variables
-	integer(i8) :: num_plot_ploints, max_iterations, partition_boundaries(3)
+	! Electron trajectories' computation variables
+	integer(i8) :: num_plot_ploints, max_iterations
 	real(dp) :: dt, r(3), v(3), a(3)
 	integer(i8) :: num_embedded, num_scattered
-	integer(i8), allocatable :: num_super_electrons(:,:,:)
-	integer, allocatable :: super_electron_charges(:,:,:,:)
-	real(dp), allocatable :: super_electron_positions(:,:,:,:,:)
 	real(dp), allocatable :: embedded_positions(:,:), scattered_positions(:,:)
 	real(dp) :: alpha, beta
 	integer, parameter :: output_unit = 42
@@ -100,13 +170,8 @@ program main
 		atom_positions, atomic_numbers, atomic_numbers_cbrt)
 
 	!=============================================================================
-	! COMPUTE OPTIMIZED ELECTRON TRAJECTORIES
+	! COMPUTE ELECTRON TRAJECTORIES
 	!=============================================================================
-
-	! Set up partition cells and super electron arrays
-	call set_up_cells_and_super_electrons &
-		(num_electrons, material_boundaries, partition_boundaries, &
-		num_super_electrons, super_electron_charges, super_electron_positions)
 
 	! Allocate and initialize embedded and scattered positions arrays
 	allocate(embedded_positions(num_electrons,3))
@@ -128,8 +193,7 @@ program main
 
 	! Simulate the trajectory of each electron in the beam
 	do i = 1, num_electrons
-		print*, "Simulating", i, "out of", num_electrons, &
-		"electron trajectories (optimized)"
+		print*, "Simulating", i, "out of", num_electrons, "electron trajectories"
 
 		! Set current iteration simulation time
 		call cpu_time(iteration_start_time)
@@ -144,14 +208,12 @@ program main
 		call number_of_iterations_estimation &
 			(r, v, dt, max_iterations, num_plot_ploints)
 
-		! Simulate current electron trajectory using combination of regular and
-		! approximated time step updates to optimize total simulation time
-		call compute_trajectory_optimized &
+		! Simulate current electron trajectory
+		call compute_trajectory &
 			(electron_trajectories_saving_enabled, num_plot_ploints, max_iterations, &
 			output_unit+1, material_boundaries, atom_positions, atomic_numbers, &
-			atomic_numbers_cbrt, partition_boundaries, num_super_electrons, &
-			super_electron_positions, super_electron_charges, dt, r, v, a, &
-			num_embedded, num_scattered, embedded_positions, scattered_positions)
+			atomic_numbers_cbrt, dt, r, v, a, num_embedded, num_scattered, &
+			embedded_positions, scattered_positions)
 
 		! Write empty lines for separation between trajectories in output file,
 		! if electron trajectories saving is enabled
@@ -219,11 +281,6 @@ program main
 	print*, "  Number of electrons scattered:", num_scattered
 	print*, "Total simulation time:", total_time
 
-	! Save the final super electron distribution to output file
-	call write_final_super_electron_distribution &
-		(partition_boundaries, num_super_electrons, super_electron_charges, &
-		super_electron_positions)
-
 	! Save final simulation status information to output file
 	call write_simulation_status_information &
 		(output_unit, i, num_electrons, num_embedded, num_scattered, total_time)
@@ -237,8 +294,5 @@ program main
 	deallocate(atomic_numbers_cbrt)
 	deallocate(embedded_positions)
 	deallocate(scattered_positions)
-	deallocate(num_super_electrons)
-	deallocate(super_electron_positions)
-	deallocate(super_electron_charges)
 
-end program
+end program main_electron_scattering
