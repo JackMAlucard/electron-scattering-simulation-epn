@@ -1,5 +1,5 @@
 !===============================================================================
-! Program    : main_electron_scattering_optimized
+! Program    : main_optimized_electron_scattering
 ! Purpose    : Simulate the behavior of an electron beam interacting with a
 !              dielectric material by computing the trajectories of each
 !              electron in the beam sequentially. Includes optimization method
@@ -81,7 +81,7 @@
 !     - simulation_info.dat
 !         Simulation status information. It follows a specific text format.
 !===============================================================================
-program main_electron_scattering_optimized
+program main_optimized_electron_scattering
 
 	use m0_utilities, &
 		only: i8, dp, read_input_parameters, open_output_files, &
@@ -324,4 +324,4 @@ program main_electron_scattering_optimized
 	deallocate(super_electron_positions)
 	deallocate(super_electron_charges)
 
-end program main_electron_scattering_optimized
+end program main_optimized_electron_scattering
