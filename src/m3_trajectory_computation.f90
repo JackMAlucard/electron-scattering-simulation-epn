@@ -510,7 +510,7 @@ module m3_trajectory_computation
 			! Check for scattering end condition: electron is outside the material
 			! and exceeds its initial distance to target
 			if (distance_to_target .gt. initial_distance_to_target .and. &
-			r(2) .gt. 0) then
+			r(2) .gt. MATERIAL_HEIGHT_SIO2) then
 				! Update scattered condition flag, scattered number and positions
 				is_scattered = .true.
 				num_scattered = num_scattered + 1
@@ -525,18 +525,31 @@ module m3_trajectory_computation
 				print*
 			end if
 
-			! Check for scattering end condition: electron is outside the material
-			! and maximum number of iterations is exceeded
+			! Check for scattering end condition: maximum number of iterations is 
+			! exceeded. This considers both possible cases, either the electron is
+			! outside or inside the material
 			if (i .ge. max_iterations) then
 				! Update maximum iterations and scattered conditions flag, scattered
 				! number and positions
 				is_max_iteration = .true.
-				is_scattered = .true.
-				num_scattered = num_scattered + 1
-				scattered_positions(num_scattered,:) = r
+				
+				if (r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+					is_scattered = .true.
+					num_scattered = num_scattered + 1
+					scattered_positions(num_scattered,:) = r
+					
+					! Print end condition information to console
+					print*, "Trajectory end --> Electron is scattered"
+				else
+					is_embedded = .true.
+					num_embedded = num_embedded + 1
+					embedded_positions(num_embedded,:) = r
+					
+					! Print end condition information to console
+					print*, "Trajectory end --> Electron is embedded"
+				end if
 
 				! Print end condition information to console
-				print*, "Trajectory end --> Electron is scattered"
 				print*, "Total iterations:", i
 				print*, "Final electron position:", r
 				print*, " Maximum number of iterations reached!"
