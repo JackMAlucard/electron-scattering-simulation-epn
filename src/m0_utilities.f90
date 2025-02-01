@@ -22,7 +22,7 @@ module m0_utilities
 	! top layer in the model (a0)
 	real(dp), parameter :: MATERIAL_HEIGHT_SIO2 = 0.5*INTERATOMIC_DIST_SIO2
 	! Approximated mean free path of electrons in the SiO2 model (a0)
-	real(dp), parameter :: MEAN_FREE_PATH_SIO2 = 33.74649829
+	real(dp), parameter :: MEAN_FREE_PATH_SIO2 = 32.29106592
 	! Approximated macroscopic cross section in the SiO2 model (a0)
 	real(dp), parameter :: CROSS_SECTION_SIO2 = 1/MEAN_FREE_PATH_SIO2
 	! Scaling factor for space partitioning cell size (real)
