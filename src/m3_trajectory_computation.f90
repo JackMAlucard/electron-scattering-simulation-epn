@@ -436,7 +436,7 @@ module m3_trajectory_computation
 
 		! Initialize plot points counter
 		j = 0
-		
+
 		! Main simulation loop
 		do while (.not.(is_embedded .or. is_scattered .or. is_max_iteration))
 			! Current time
@@ -451,7 +451,7 @@ module m3_trajectory_computation
 				j = j + 1
 			end if
 
-			! Compute next time step using Velocity Verlet algorithm:
+			! Compute next time step using Velocity Verlet algorithm
 			! Update electron position r, velocity v, and acceleration a
 			call time_step &
 			(num_embedded, material_boundaries, embedded_positions, &
@@ -529,11 +529,11 @@ module m3_trajectory_computation
 			! This considers both possible cases, either the electron is
 			! outside or inside the material
 			if (i .ge. max_iterations) then
-				! Update maximum iterations and scattered conditions flag, scattered
-				! number and positions
+				! Update maximum iterations condition flag
 				is_max_iteration = .true.
 				
 				if (r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+					! Update scattered condition flag, scattered number and positions
 					is_scattered = .true.
 					num_scattered = num_scattered + 1
 					scattered_positions(num_scattered,:) = r
@@ -541,6 +541,7 @@ module m3_trajectory_computation
 					! Print end condition information to console
 					print*, "Trajectory end --> Electron is scattered"
 				else
+					! Update embedded condition flag, embedded number and positions
 					is_embedded = .true.
 					num_embedded = num_embedded + 1
 					embedded_positions(num_embedded,:) = r

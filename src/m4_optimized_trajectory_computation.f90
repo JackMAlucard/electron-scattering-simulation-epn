@@ -534,9 +534,9 @@ module m4_optimized_trajectory_computation
 		real(dp), intent(inout) :: embedded_positions(:,:), scattered_positions(:,:)
 
 		! Local variables
-		real(dp) :: initial_distance_to_target
 		logical :: is_embedded, is_scattered, is_max_iteration
 		logical :: in_material
+		real(dp) :: initial_distance_to_target
 		real(dp) :: distance_before_collision, distance_in_material
 		real(dp) :: previous_position(3), actual_position(3), step_length
 		real(dp) :: distance_to_target, t
@@ -575,8 +575,8 @@ module m4_optimized_trajectory_computation
 				j = j + 1
 			end if
 
-			! Compute next time step using Velocity Verlet algorithm;
-			! Update electron position r, velocity v, and acceleration a;
+			! Compute next time step using Velocity Verlet algorithm
+			! Update electron position r, velocity v, and acceleration a
 			! Time step update: Approximated, projectile electron's distance to target
 			! material is greater than EFFECTIVE_DISTANCE and not in material zone
 			if (distance_to_target .gt. EFFECTIVE_DISTANCE .and. &
@@ -622,11 +622,12 @@ module m4_optimized_trajectory_computation
 
 				! Check if electron gets embedded due to collision with atomic electron
 				if (distance_in_material .ge. distance_before_collision) then
+					! Update embedded condition flag, embedded number and positions
 					is_embedded = .true.
 					num_embedded = num_embedded + 1
 					embedded_positions(num_embedded,:) = r
 
-					! Update embedded condition flag, embedded number and positions
+					! Update super electron arrays in the corresponding partition cell
 					call update_super_electron_in_cell &
 					(r, partition_boundaries, num_super_electrons, &
 					super_electron_charges, super_electron_positions)
@@ -670,11 +671,11 @@ module m4_optimized_trajectory_computation
 			! This considers both possible cases, either the electron is
 			! outside or inside the material
 			if (i .ge. max_iterations) then
-				! Update maximum iterations and scattered conditions flag, scattered
-				! number and positions
+				! Update maximum iterations condition flag
 				is_max_iteration = .true.
 				
 				if (r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+					! Update scattered condition flag, scattered number and positions
 					is_scattered = .true.
 					num_scattered = num_scattered + 1
 					scattered_positions(num_scattered,:) = r
@@ -682,6 +683,7 @@ module m4_optimized_trajectory_computation
 					! Print end condition information to console
 					print*, "Trajectory end --> Electron is scattered"
 				else
+					! Update embedded condition flag, embedded number and positions
 					is_embedded = .true.
 					num_embedded = num_embedded + 1
 					embedded_positions(num_embedded,:) = r
