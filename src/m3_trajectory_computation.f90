@@ -525,8 +525,8 @@ module m3_trajectory_computation
 				print*
 			end if
 
-			! Check for scattering end condition: maximum number of iterations is 
-			! exceeded. This considers both possible cases, either the electron is
+			! Check for maximum number of iterations end condition:
+			! This considers both possible cases, either the electron is
 			! outside or inside the material
 			if (i .ge. max_iterations) then
 				! Update maximum iterations and scattered conditions flag, scattered

@@ -666,15 +666,29 @@ module m4_optimized_trajectory_computation
 				print*
 			end if
 
-			! Check for scattering end condition: electron is outside the material
-			! and maximum number of iterations is exceeded
+			! Check for maximum number of iterations end condition:
+			! This considers both possible cases, either the electron is
+			! outside or inside the material
 			if (i .ge. max_iterations) then
 				! Update maximum iterations and scattered conditions flag, scattered
 				! number and positions
 				is_max_iteration = .true.
-				is_scattered = .true.
-				num_scattered = num_scattered + 1
-				scattered_positions(num_scattered,:) = r
+				
+				if (r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+					is_scattered = .true.
+					num_scattered = num_scattered + 1
+					scattered_positions(num_scattered,:) = r
+					
+					! Print end condition information to console
+					print*, "Trajectory end --> Electron is scattered"
+				else
+					is_embedded = .true.
+					num_embedded = num_embedded + 1
+					embedded_positions(num_embedded,:) = r
+					
+					! Print end condition information to console
+					print*, "Trajectory end --> Electron is embedded"
+				end if
 
 				! Print end condition information to console
 				print*, "Trajectory end --> Electron is scattered"
