@@ -693,7 +693,6 @@ module m4_optimized_trajectory_computation
 				end if
 
 				! Print end condition information to console
-				print*, "Trajectory end --> Electron is scattered"
 				print*, "Total iterations:", i
 				print*, "Final electron position:", r
 				print*, " Maximum number of iterations reached!"
