@@ -282,6 +282,112 @@ program rutherfhord_scattering_test_simulations
 		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
 
 	end subroutine parameter_initialization
+
+	!=============================================================================
+	! Subroutine: compute_theoretical_trajectory
+	! Purpose   : Compute the theoretical scattering trajectory of a projectile 
+	!             particle moving towards a target particle of the same charge
+	!             using the corresponding orbit equation: a hyperbola in polar
+	!             coordinates. The geometric parameters of the hyperbola are
+	!             computed from the physical parameters. The trajectory
+	!             and geometric parameters are written to output files.
+	!             
+	! Arguments :
+	!   - integer(i8), intent(in) :: num_plot_ploints
+	!       Number of points to be plotted. At most equal to number of time steps.
+	!   - integer(i8), intent(in) :: output_unit
+	!       Unit number for the simulation output file.
+	!   - integer(i8), intent(in) :: info_output_unit
+	!       Unit number for the simulation information output file.
+	!   - real(dp), intent(in) :: r0(3)
+	!       Initial position vector of the projectile electron (a0).
+	!   - real(dp), intent(in) :: K0
+	!       Initial kinetic energy of the projectile. On input, in kiloelectron
+	!   - real(dp), intent(out) :: a
+	!       Semi-major axis of the hyperbola, atomic units (a0).
+	!   - real(dp), intent(out) :: b
+	!       Semi-minor axis of the hyperbola, atomic units (a0).
+	!   - real(dp), intent(out) :: c
+	!       Distance to the center of the hyperbola, atomic units (a0).
+	!   - real(dp), intent(out) :: e
+	!       Eccentricity of the hyperbola, e > 1 dimensionless.
+	!=============================================================================
+	subroutine compute_theoretical_trajectory &
+		(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
+		xf, yf)
+		implicit none
+
+		! Input/Output variables
+		integer(i8), intent(in) :: num_plot_ploints
+		integer(i8), intent(in) :: output_unit, info_output_unit
+		real(dp), intent(in) :: r0(3), K0			! Physical initial parameters
+		real(dp), intent(out) :: a, b, c, e		! Hyperbola geometric parameters
+		real(dp), intent(out) :: xf, yf				! Last point coordinates
+
+		! Local variables
+		real(dp) :: x0, y0				! Initial horizontal and vertical positions
+		real(dp) :: phi0, phif, dphi, phii, ri		! Angular and radial coordinates
+		real(dp) :: xi, yi												! Cartesian coordinates
+		real(dp) :: alpha													! Asymptote/rotation angle
+		real(dp) :: den, num                      ! Auxiliary variables
+		integer :: i
+
+		! Extract initial values
+		x0 = r0(1)	! Initial horizontal distance
+		y0 = r0(2)	! Impact parameter
+
+		! Compute hyperbola geometric parameters
+		a = 1/(2*K0)					! Semi-major axis
+		b = y0								! Semi-minor axis
+		c = dsqrt(a*a + b*b)	! Distance to the center
+		e = c / a		! Eccentricity
+
+		! Print hyperbola parameters
+		write(info_output_unit, "('*** THEORETICAL TRAJECTORY PARAMETERS ***')")
+		write(info_output_unit, "('Hyperbola geometric parameters')")
+		write(info_output_unit, "('a:', e12.4, '[au]')") a
+		write(info_output_unit, "('b:', e12.4, '[au]')") b
+		write(info_output_unit, "('c:', e12.4, '[au]')") c
+		write(info_output_unit, "('e:', e12.4, '[--]')") e
+
+		! Compute trajectory using hyperbola's polar equation (left branch only)
+		alpha = dacos(1/e)										! Asymptote angle, (-) rotation angle
+
+		phif = datan2(y0, x0)									! Final plot angle
+		if (y0 < 0._dp) phif = phif + 2*PI		! Adjust angle to [0, 2π)
+
+		phif = phif - PI											! Reflect to hyperbola frame
+		phi0 = -phif - 2*alpha								! Initial angle to start plotting
+		dphi = (phif - phi0) / N							! Angular step between points
+
+		do i = 0, num_plot_ploints
+			phii = phi0 + i*dphi
+			! Cartesian coordinates trajectory equation:
+			! ri = (b*b/a)/(1 - e*dcos(phii + alpha)) rewritten to avoid loss
+			! of significance for small b, using difference of squares trick
+			num = a**2 - (c*dcos(phii + alpha))**2
+			den = a + c*dcos(phii + alpha)
+			ri = (b**2 * den) / num
+
+			xi = ri * dcos(phii)
+			yi = ri * dsin(phii)
+
+			write(output_unit, *) xi, yi
+
+			if (i == 0) then
+				! Save first point as theoretical final coordinates
+				xf = xi
+				yf = yi
+			end if
+			
+		end do
+
+		! Add separation in output file to plot using gnuplot
+		write(output_unit, *)
+		write(output_unit, *)
+
+	end subroutine theoretical_trajectory
+
 	
 	
 end program rutherfhord_scattering_test_simulations
