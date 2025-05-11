@@ -7,6 +7,8 @@ program rutherfhord_scattering_test_simulations
 	use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
 	implicit none
 	! Kind type parameters for increased real precision and integer length
+	! Single precision reals, 6 digits, range 10**(-37) to 10**(37)-1; 32 bits
+	integer, parameter :: sp = selected_real_kind(6, 37)
 	! Double precision reals, 15 digits, range 10**(-307) to 10**(307)-1; 64 bits
 	integer, parameter :: dp = selected_real_kind(15, 307)
 	! Long length for integers, range -2**63 to 2**63-1; 64 bits
@@ -178,184 +180,108 @@ program rutherfhord_scattering_test_simulations
 	close(icu)
 	call system ("rm "//aux_file)
 	
-contains
+	contains
 
-!Distance conversion from angstroms to Bohr radii a0 (au)
-real(dp) function dinAU(dinangstroms)
-implicit none
-real(dp), intent(in) :: dinangstroms
-	dinAU = dinangstroms/0.5291772
-end function dinAU
+	!=============================================================================
+	! Subroutine: parameter_initialization
+	! Purpose   : Initialize simulation parameters by reading and converting 
+	!             values for initial conditions, estimating number of time steps.
+	! Arguments :
+	!   - integer(i8), intent(in) :: info_output_unit
+	!       Unit number for the simulation information output file.
+	!   - integer(i8), intent(inout) :: num_plot_ploints
+	!       Number of points to be plotted. At most equal to number of time steps.
+	!   - real(dp), intent(inout) :: K0
+	!       Initial kinetic energy of the projectile. On input, in kiloelectron
+	!       volts (keV). On output, converted to atomic units (Hartree, Eh).
+	!   - real(dp), intent(inout) :: x0
+	!       Initial horizontal distance between particles. On input, in angstroms
+	!       (Å). On output, converted to atomic units (Bohr radius, a0).
+	!   - real(dp), intent(inout) :: b
+	!       Impact parameter. On input, in angstroms (Å). On output, converted
+	!       to atomic units (Bohr radius, a0).
+	!   - real(dp), intent(inout) :: dt
+	!       Time step size in atomic units of time (aut).
+	!   - real(dp), intent(out) :: r0(3)
+	!       Initial position vector of the projectile electron (a0).
+	!   - real(dp), intent(out) :: v0(3)
+	!       Initial velocity vector of the projectile electron (a0/aut).
+	!   - integer(i8), intent(out) :: max_iterations
+	!       Estimated number of time steps in the simulation.
+	!=============================================================================
+	subroutine parameter_initialization &
+		(info_output_unit, num_plot_ploints, K0, x0, b, dt, r0, v0, max_iterations)
+		implicit none
 
-!This subroutine reads values for initial horizontal distance, hd (Å), impact
-!parameter, b (Å), initial kinetic energy, K0 (KeV), and time step size,
-!dt (aut). It uses these values to initialize the simulation.
-!It also uses the number of points to be plotted, N, and the output info file
-!unit, oifu.
-!Here, the final simulation time is estimated assuming that acceleration is
-!constant.
-subroutine parameter_init(hd, b, K0, dt, r0, v0, T, N, oifu)
-implicit none
-integer(i8), intent(in) :: oifu
-integer(i8), intent(inout) :: N
-real(dp), intent(inout) :: K0, hd, b, dt			!Variable simulation parameters
-real(dp), intent(out) :: r0(3), v0(3)	!Simulation variables
-integer(i8), intent (out) :: T						!Number of iterations
-real(dp) :: conv_aux				!Conversion auxiliar to print values
-real(dp) :: v, a, tf				!Acceleration for time estimation
-character(len=80) :: FMTS		!Format string
+		! Input/Output variables
+		integer(i8), intent(in)    :: info_output_unit
+		integer(i8), intent(inout) :: num_plot_ploints
+		real(dp), intent(inout)    :: K0		! Initial kinetic energy (keV)
+		real(dp), intent(inout)    :: x0		! Initial horizontal distance (Å)
+		real(dp), intent(inout)    :: b			! Impact parameter (Å)
+		real(dp), intent(inout)    :: dt		! Time step size (aut)
+		real(dp), intent(out)      :: r0(3)	! Initial position vector (a0)
+		real(dp), intent(out)      :: v0(3)	! Initial velocity vector (a0/aut)
+		integer(i8), intent(out)   :: max_iterations
 
-	write(oifu, "('*** SIMULATION PARAMETERS ***')")
-	write(oifu, "('Number of points to be plotted, N: ', i6)") N
+		! Local variables
+		real(dp) :: conv_aux	! Auxiliary variable for unit conversion
+		real(dp) :: v         ! Velocity magnitude (a0/aut)
+		real(dp) :: a         ! Approximate constant acceleration (a0/aut^2)
+		real(dp) :: tf        ! Estimated final simulation time (aut)
+		character(len=80) :: format_param_write_string
 
-	!Initial kinetic energy, K0
-	conv_aux = K0
-	K0 = K0*1.d3/27.21139 ! Conversion from keV (SI) to Eh, hartree (au)
-	
-	FMTS = "('Initial kinetic energy, K0:     ', d12.4, '[keV] =', d12.4, '[Eh]')"
-	write(oifu, FMTS) conv_aux, K0
+		! Output basic simulation configuration
+		write(info_output_unit, "('*** SIMULATION PARAMETERS ***')")
+		write(info_output_unit, "('Number of points to be plotted, N: ', i6)") &
+			num_plot_ploints
 
-	!Initial horizontal distance, hd
-	conv_aux = hd
-	hd = hd/0.5291772! Conversion from angstroms to Bohr radii a0 (au)
-	FMTS = "('Initial horizontal distance, hd:', d12.4, '[Å]   =', d12.4, '[a0]')"
-	write(oifu, FMTS) conv_aux, hd
+		! Convert and print initial kinetic energy, K0
+		conv_aux = K0
+		K0 = K0*1.d3/27.21139	! Conversion from keV to Eh
+		format_param_write_string = &
+			"('Initial kinetic energy, K0:     ', d12.4, '[keV] =', d12.4, '[Eh]')"
+		write(info_output_unit, format_param_write_string) conv_aux, K0
 
-	!Impact parameter, b
-	conv_aux = b
-	b = b/0.5291772! Conversion from angstroms to Bohr radii a0 (au)
-	FMTS = "('Impact parameter, b:            ', d12.4, '[Å]   =', d12.4, '[a0]')"
-	write(oifu, FMTS) conv_aux, b
+		! Convert and print initial horizontal distance, x0
+		conv_aux = x0
+		x0 = x0/0.5291772	! Conversion from Å to a0
+		format_param_write_string = &
+		"('Initial horizontal distance, hd:', d12.4, '[Å]   =', d12.4, '[a0]')"
+		write(info_output_unit, format_param_write_string) conv_aux, x0
 
-	!Time step size, dt
-	conv_aux = dt*2.418d-17
-	FMTS = "('Time step size, dt:             ', d12.4, '[aut] =', d12.4, '[s]')"
-	write(oifu, FMTS) dt, conv_aux
+		! Convert and print impact parameter, b
+		conv_aux = b
+		b = b/0.5291772	! Conversion from Å to a0
+		format_param_write_string = &
+		"('Impact parameter, b:            ', d12.4, '[Å]   =', d12.4, '[a0]')"
+		write(info_output_unit, format_param_write_string) conv_aux, b
 
-	!Parameter initialization
-	!Initial position
-	r0 = (/-hd, b, 0._dp/)
+		! Convert and print time step size, dt
+		conv_aux = dt * 2.418d-17  ! Convert from aut to seconds
+		format_param_write_string = &
+		"('Time step size, dt:             ', d12.4, '[aut] =', d12.4, '[s]')"
+		write(info_output_unit, format_param_write_string) dt, conv_aux
 
-	!Initial velocity
-	v0 = (/dsqrt(2*K0), 0._dp, 0._dp/)
+		! Initialize position vector: projectile starts at (-x0, b, 0)
+		r0 = (/-x0, b, 0._dp/)
 
-	!Final time estimation
-	a = norm2(r0)
-	a = 1/a
-	v = norm2(v0)
-	tf = (-v + dsqrt(v*v - 2*a*hd))/a
-	tf = -2*tf
-	!Number of iterations
-	T = dint(tf/dt)
-	if (T .lt. N) N = T !Can't plot less points than the number of simulated ones
-end subroutine parameter_init
+		! Initialize velocity vector: motion along +x axis
+		v0 = (/dsqrt(2*K0), 0._dp, 0._dp/)
 
-!Number of points to be plotted, initial position vector, initial velocity
-!vector, hyperbola geometrical parameters.
-!The resulting coordinates are written into the Output file Unit, ou, and
-!the trajectory parameters to Output Info file Unit, oiu which must be
-!previously opened in the program.
-subroutine theoretical_trajectory(N, r0, v0, a, b, c, e, xf, yf, ou, oiu)
-implicit none
-real(dp), parameter :: PI = dacos(-1.d0)
-integer(i8), intent(in) :: N						!Number of points to be plotted
-integer(i8), intent(in) :: ou, oiu			!Output files Unit's
-real(dp), intent(in) :: r0(3), v0(3)		!Required simulation parameters
-real(dp), intent(out) :: a, b, c, e			!Hyperbola geometrical parameters
-real(dp), intent(out) :: xf, yf					!Last point coordinates
-real(dp) :: x0, y0, vx0
-real(dp) :: phi0, phif, dphi, phii, ri	!Plotting variables
-real(dp) :: xi, yi, alpha, den, num
-	!From input vectors to dummy variables
-	x0 = r0(1)
-	y0 = r0(2)
-	vx0 = v0(1)
+		! Estimate final simulation time assuming constant acceleration
+		a = 1.0_dp / norm2(r0)
+		v = norm2(v0)
+		tf = (-v + dsqrt(v**2 - 2*a*x0))/a
+		tf = -2*tf
 
-	a = 1/(vx0*vx0) !a = 1/(2*K0), K0 = 0.5*v0**2
-	b = y0
-	c = dsqrt(a*a + b*b)
-	e = c/a
+		! Calculate estimated number of simulation steps
+		max_iterations = dint(tf/dt)
 
-	write(oiu, "('*** THEORETICAL TRAJECTORY PARAMETERS ***')")
-	write(oiu, "('Hyperbola geometric parameters')")
-	write(oiu, "('a:', e12.4, '[au]')") a
-	write(oiu, "('b:', e12.4, '[au]')") b
-	write(oiu, "('c:', e12.4, '[au]')") c
-	write(oiu, "('e:', e12.4, '[au]')") e
+		! Adjust number of plot points if it exceeds maximum number of iterations
+		if (max_iterations .lt. num_plot_ploints) num_plot_ploints = max_iterations
 
-	!*****************************************************************************
-	!Plotting the scattering trajectory, i.e. the Hyperbola's Left Branch
-	!using the simulation initialization parameters
-
-	!Compute the angle alpha. which limits the range for the left branch
-	alpha = dacos(1/e)
-
-	!Compute the angle coordinate of the initial simulation point.
-	phif = datan2(y0,x0)
-	if (y0 .lt. 0._dp) phif = phif + 2*PI
-
-	!Substract PI from the resulting angle to get the angle correspoding
-	!to the LAST POINT to be plotted using the polar coordinates hyperbola
-	!equation. This is necessary because the way in which the left branch
-	!is generated via this equation uses negative r values, i.e. -alpha<phi<alpha
-	phif = phif - PI
-	phi0 = -phif - 2*alpha
-	dphi = (phif-phi0)/N
-
-	!Cartesian coordinates trajectory equations:
-			!ri = (b*b/a)/(1 - e*dcos(phii + alpha))
-			!ri = (b*b/c)/(1/e - dcos(phii + alpha))
-			!ri = (b*b)/(a - c*dcos(phii + alpha))
-			!There is loss of significant figures on: a - c*dcos(phii + alpha)
-			!for really small values of impact parameter, b
-			!Using difference of squares trick to somewhat lessen the error
-			!x - y = (x**2 - y**2)/(x + y)
-	do i=0, N
-		phii = phi0 + i*dphi
-		num = a*a - c*c*dcos(phii + alpha)*dcos(phii + alpha)
-		den = a + c*dcos(phii + alpha)
-		ri = (b*b*den)/num
-		xi = ri*dcos(phii)
-		yi = ri*dsin(phii)
-		write (ou, *) xi, yi
-		if (i .eq. 0) then
-			!Save coordinates for "final" point of the theoretical trajectory
-			xf = xi
-			yf = yi
-		end if
-	end do
-
-	write (ou, *)
-	write (ou, *)
-end subroutine theoretical_trajectory
-
-!Acceleration for interaction between point particles for Velocity Verlet
-!Algorithm using atomic units (au)
-subroutine akP(rt, ri, a)
-!rt: r target, position of scattering center, i.e. stationary particle
-!ri: r incoming, position of moving/incident particle
-!a: Acceleration of moving/incident particle
-implicit none
-real(dp), intent(in) :: rt(3), ri(3)
-real(dp), intent(out) :: a(3)
-real(dp) :: rs(3), r !rs: r separation vector and its magnitude
-	rs = ri - rt
-	r = norm2(rs)
-	a = rs/(r**3)
-end subroutine akP
-
-subroutine vv_step(i, rt, t0, dt, t, r, v, a)
-integer(i8), intent(in) :: i
-real(dp), intent(in) :: rt(3)
-real(dp), intent(in) :: t0, dt
-real(dp), intent(inout) :: t, r(3), v(3), a(3)
-	!Velocity Verlet algorithm
-	t = t0 + i*dt
-	r = r + v*dt + 0.5*a*dt*dt
-	v = v + 0.5*a*dt
-	call akP(rt, r, a)
-	v = v + 0.5*a*dt
-end subroutine vv_step
+	end subroutine parameter_initialization
 	
 	
 end program rutherfhord_scattering_test_simulations
