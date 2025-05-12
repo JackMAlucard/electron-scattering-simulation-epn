@@ -181,7 +181,6 @@ program rutherfhord_scattering_test_simulations
 	call system ("rm "//aux_file)
 	
 	contains
-
 	!=============================================================================
 	! Subroutine: parameter_initialization
 	! Purpose   : Initialize simulation parameters by reading and converting 
@@ -386,8 +385,133 @@ program rutherfhord_scattering_test_simulations
 		write(output_unit, *)
 		write(output_unit, *)
 
-	end subroutine theoretical_trajectory
+	end subroutine compute_theoretical_trajectory
 
-	
+	!=============================================================================
+	! Subroutine : compute_conserved_quantities
+	! Purpose    : Calculate conserved mechanical quantities for a Coulomb
+	!              interaction: total energy (kinetic + potential) and the
+	!              magnitude of the angular-momentum vector.
+	! Arguments  :
+	!   - real(dp), intent(in)  :: r(3)
+	!       Position vector of the projectile electron (a0).
+	!   - real(dp), intent(in)  :: v(3)
+	!       Velocity vector of the projectile electron (a0/aut).
+	!   - real(dp), intent(out) :: U
+	!       Total mechanical energy (Hartree, Eh).
+	!   - real(dp), intent(out) :: L
+	!       Magnitude of angular momentum (a0^2/aut, ħ).
+	!=============================================================================
+	subroutine compute_conserved_quantities(r, v, U, L)
+		 implicit none
+
+		 ! Input/Output variables
+		 real(dp), intent(in)  :: r(3)	! Position of the electron (a0)
+		 real(dp), intent(in)  :: v(3)	! Velocity of the electron (a0/aut)
+		 real(dp), intent(out) :: U			! Total mechanical energy (Eh)
+		 real(dp), intent(out) :: L			! Angular momentum magnitude (ħ)
+
+		 ! Local variables
+		 real(dp) :: Uk, Ue		! Energy components
+		 real(dp) :: L_vec(3)	! Angular-momentum vector
+
+		 ! Energy calculation
+		 Uk = 0.5*(v(1)**2 + v(2)**2 + v(3)**2)	! Kinetic energy
+		 Ue = 1/norm2(r)             						! Electrostatic potential energy
+		 U = Uk + Ue
+
+		 ! Angular-momentum vector   L = r × v
+		 L_vec(1) = r(2)*v(3) - r(3)*v(2)	! y*vz - z*vy
+		 L_vec(2) = r(3)*v(1) - r(1)*v(3)	! z*vx - x*vz
+		 L_vec(3) = r(1)*v(2) - r(2)*v(1)	! x*vy - y*vx
+		 L = norm2(L_vec)
+
+	end subroutine compute_conserved_quantities
+
+!=============================================================================
+! Subroutine : acceleration_point_charge
+! Purpose    : Compute the acceleration experienced by a moving electron due to
+!              a stationary unit-charge target (Coulomb force in atomic units).
+! Arguments  :
+!   - real(dp), intent(in)  :: rt(3)
+!       Position vector of the fixed (target) charge (a0).
+!   - real(dp), intent(in)  :: ri(3)
+!       Position vector of the incident (moving) charge (a0).
+!   - real(dp), intent(out) :: a(3)
+!       Acceleration vector acting on the incident charge (a0 / aut²).
+!=============================================================================
+subroutine acceleration_point_charge(rt, ri, a)
+   implicit none
+
+   ! Input variables
+   real(dp), intent(in)  :: rt(3), ri(3)
+
+   ! Output variables
+   real(dp), intent(out) :: a(3)
+
+   ! Local variables
+   real(dp) :: r_sep(3)          ! Separation vector   (ri − rt)
+   real(dp) :: r_mag             ! Magnitude of r_sep  (a0)
+
+   !---------------------------------------------------------------------------
+   r_sep = ri - rt
+   r_mag = norm2(r_sep)
+
+   ! Coulomb acceleration   a = r_sep / r_mag³      (e = m = 1 in a.u.)
+   a = r_sep / (r_mag**3)
+
+end subroutine acceleration_point_charge
+
+!=============================================================================
+! Subroutine : velocity_verlet_step
+! Purpose    : Advance the position, velocity, and acceleration of the moving
+!              particle by one Velocity-Verlet time step.
+! Arguments  :
+!   - integer(i8), intent(in)    :: step_idx
+!       Current iteration index (starting at 1).
+!   - real(dp),    intent(in)    :: rt(3)
+!       Position of the stationary target charge (a0).
+!   - real(dp),    intent(in)    :: t0
+!       Initial simulation time (aut).
+!   - real(dp),    intent(in)    :: dt
+!       Time-step size (aut).
+!   - real(dp),    intent(inout) :: t
+!       Current simulation time (aut).
+!   - real(dp),    intent(inout) :: r(3)
+!       Position vector of the moving charge (a0).
+!   - real(dp),    intent(inout) :: v(3)
+!       Velocity vector of the moving charge (a0 / aut).
+!   - real(dp),    intent(inout) :: a(3)
+!       Acceleration acting on the moving charge (a0 / aut²).
+!=============================================================================
+subroutine velocity_verlet_step(step_idx, rt, t0, dt, t, r, v, a)
+   implicit none
+
+   ! Input variables
+   integer(i8), intent(in)    :: step_idx
+   real(dp),    intent(in)    :: rt(3), t0, dt
+
+   ! Input/Output variables
+   real(dp),    intent(inout) :: t, r(3), v(3), a(3)
+
+   !---------------------------------------------------------------------------
+   ! 1. Update time
+   t = t0 + step_idx * dt
+
+   ! 2. Update position: r(t+dt) = r + v*dt + ½ a dt²
+   r = r + v*dt + 0.5_dp*a*dt*dt
+
+   ! 3. Half-step velocity update: v = v + ½ a dt
+   v = v + 0.5_dp*a*dt
+
+   ! 4. Recompute acceleration at the new position
+   call acceleration_point_charge(rt, r, a)
+
+   ! 5. Complete velocity update with new acceleration
+   v = v + 0.5_dp*a*dt
+
+end subroutine velocity_verlet_step
+
+
 	
 end program rutherfhord_scattering_test_simulations
