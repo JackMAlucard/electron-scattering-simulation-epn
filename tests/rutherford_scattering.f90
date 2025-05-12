@@ -16,100 +16,107 @@ program rutherfhord_scattering_test_simulations
 	! General variables
 	real(dp), parameter :: PI = dacos(-1.d0)
 	real(dp), parameter :: t0 = 0._dp
-	integer(i8) :: i, j!, option	!Program structure parameters
-	integer(i8) :: N 						!Number of points to be plotted/simulated
-	real(dp) :: K0, K0f, hd, hdf	!Fixed simulation parameters
+	integer(i8) :: i, j	!Program structure parameters
+	integer(i8) :: num_plot_ploints	!Number of points to be plotted/simulated
+	real(dp) :: K0, K0f, x0, x0f	!Fixed simulation parameters
 	real(dp) :: b, dt							!Variable simulation parameters
 	real(dp) :: rt(3)						!Target electron position
 	real(dp) :: r0(3), v0(3)		!Simulation position and velocity
-	integer(i8) :: T						!Number of iterations
-	real(dp) :: a, c, e!, b			!Theoretical trajectory geometric parameters
+	integer(i8) :: max_iterations	!Number of iterations
+	real(dp) :: a, c, e			!Theoretical trajectory geometric parameters
 	real(dp) :: xf, yf		!Last theoretical trajectory point generated
+	real(dp) :: scattering_angle_theoretical
+	real(dp) :: scattering_angle_plot, scattering_angle_simulation
 	real(dp) :: ti, ri(3)	!Time and space simulation variables
 	real(dp) :: vi(3)			!Velocity simulation variables
 	real(dp) :: ai(3) 		!Acceleration simulation variables
+	real(dp) :: U0, L0, Ui, Li	!Conserved quantities variables
 	logical :: estimated_time
 	character(len=24) :: current_time
-	real(sp) :: startT, endT, execTime			!Program timer variables
-	integer(i8) :: NS, k
-	character(len=*), parameter :: input_file = "test_input.in", aux_file = "aux.in"
-	character(len=10) :: K0c, hdc, bc, dtc!AT MOST 10 CHARACTERS FOR INPUT VALUES!!!
-	character(len=:), allocatable :: K0ct, hdct, bct, dtct
-	character(len=:), allocatable :: output_file, output_file_info
-	integer(i8), parameter :: inu = 11, icu = 12	!Input file as numbers and chars
-	integer(i8), parameter :: ou = 13, oiu = 14	!Output file for data and info
-	character(len=80) :: FMTS		!Format string
-	
-	!*******************************************************************************
+	real(sp) :: start_time, end_time, total_time	!Program timer variables
+	logical :: approaching_center		!Approaching Center
+	real(dp) :: closest_distance_scattering_center, distance_scattering_center
+	real(dp) :: closest_position_scattering_center(3)
+	integer(i8) :: num_simulations, k
+	character(len=*), parameter :: input_file = "input.txt", aux_file = "aux.txt"
+	character(len=10) :: K0_char, x0_char, b_char, dt_char!AT MOST 10 CHARACTERS
+	character(len=:), allocatable :: K0_char_trim, x0_char_trim, b_char_trim
+	character(len=:), allocatable :: dt_char_trim, output_file, info_output_file
+	integer(i8), parameter :: input_values_unit = 11, input_chars_unit = 12
+	integer(i8), parameter :: output_unit = 13, info_output_unit = 14
+	character(len=80) :: format_string
+
 	!Reading fixed parameters from input file
 	!Open input file twice: unit 11 to use as numbers, unit 12 to use as chars
 	call system ("cp "//input_file//" "//aux_file)
-	open(unit=inu, file=input_file, status='unknown')
-	open(unit=icu, file=aux_file, status='unknown')
+	open(unit=input_values_unit, file=input_file, status='unknown')
+	open(unit=input_chars_unit, file=aux_file, status='unknown')
 
 	!Skip the first 5 lines of the input file
-	do i=1,5
-		read(inu, *)
-		read(icu, *)
+	do i = 1, 5
+		read(input_values_unit, *)
+		read(input_chars_unit, *)
 	end do
 
-	!# of simulations/parameter sets, NS
-	read(inu, *) NS
-	read(icu, *)
-	!# of points to be plotted, N
-	read(inu, *) N
-	read(icu, *)
+	!# of simulations/parameter sets
+	read(input_values_unit, *) num_simulations
+	read(input_chars_unit, *)
+	!# of points to be plotted
+	read(input_values_unit, *) num_plot_ploints
+	read(input_chars_unit, *)
 	!Initial kinetic energy, K0 [keV]
-	read(inu, *) K0f
-	read(icu, *) K0c
-	K0ct = trim(K0c)
+	read(input_values_unit, *) K0f
+	read(input_chars_unit, *) K0_char
+	K0_char_trim = trim(K0_char)
 	!Initial horizontal distance, hd [Å]
-	read(inu, *) hdf
-	read(icu, *) hdc
-	hdct = trim(hdc)
+	read(input_values_unit, *) x0f
+	read(input_chars_unit, *) x0_char
+	x0_char_trim = trim(x0_char)
 
 	!Skip the next 4 lines of the input file
-	do i=1,4
-		read(inu, *)
-		read(icu, *)
+	do i = 1, 4
+		read(input_values_unit, *)
+		read(input_chars_unit, *)
 	end do
 
 !*******************************************************************************
-	do k=1, NS
+	do k = 1, num_simulations
 		!Fixed parameter values
 		K0 = K0f
 		hd = hdf
 		!Reading variable parameters from input file
 		!Impact parameter, b [Å]
-		read(inu, *) b
-		read(icu, *) bc
-		bct = trim(bc)
+		read(input_values_unit, *) b
+		read(input_chars_unit, *) b_char
+		b_char_trim = trim(b_char)
 		!Time step size, dt [aut]
-		read(inu, *) dt
-		read(icu, *) dtc
-		dtct = trim(dtc)
+		read(input_values_unit, *) dt
+		read(input_chars_unit, *) dt_char
+		dt_char_trim = trim(dt_char)
 
 		!Naming and opening output files
-		output_file = K0ct//'_'//hdct//'_'//bct//'_'//dtct//'.dat'
-		output_file_info = K0ct//'_'//hdct//'_'//bct//'_'//dtct//'_info.dat'
-		open(unit=ou, file=output_file, status='unknown')
-		open(unit=oiu, file=output_file_info, status='unknown')
+		output_file = K0_char_trim//'_'//x0_char_trim//'_'//b_char_trim//'_'//dt_char_trim
+		info_output_file = output_file//'_info.dat'
+		output_file = output_file//'.dat'
+		open(unit=output_unit, file=output_file, status='unknown')
+		open(unit=info_output_unit, file=info_output_file, status='unknown')
 
 		!Simulation info to print in console
-		write (oiu, "('*** ELECTRON-ELECTRON SCATTERING ***')")
-		print "('SIMULATION ', i3, ' OUT OF ', i3)", k, NS
-		print*, 'K0: '//K0ct//'[keV], hd: '//hdct//'[Å], b: '//bct//'[Å], dt: '//dtct//'[aut]'
+		write (info_output_unit, "('*** ELECTRON-ELECTRON SCATTERING ***')")
+		print "('SIMULATION ', i3, ' OUT OF ', i3)", k, num_simulations
+		print*, 'K0: '//K0_char_trim//'[keV], hd: '//x0_char_trim//'[Å], b: '//b_char_trim//'[Å], dt: '//dt_char_trim//'[aut]'
 		!Unit conversion of simulation parameters to au and printing to info file
-		call parameter_init(hd, b, K0, dt, r0, v0, T, N, oiu)
+		call parameter_initialization(info_output_unit, num_plot_ploints, K0, x0, b, dt, r0, v0, max_iterations)
 		!Add blank space on Output Info File
-		write (oiu, *)
+		write (info_output_unit, *)
 
 		!***************************************************************************
 		!Theoretical trajectory
 		!Plotting N points
-		call theoretical_trajectory(N, r0, v0, a, b, c, e, xf, yf, ou, oiu)
+		call compute_theoretical_trajectory(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
+		xf, yf)
 		!Add blank space on Output Info File
-		write (oiu, *)
+		write (info_output_unit, *)
 
 		!***************************************************************************
 		!Simulation initialization
@@ -118,36 +125,52 @@ program rutherfhord_scattering_test_simulations
 		ti = t0
 		ri = r0
 		vi = v0
-		call akP(rt, ri, ai)
-		
+		call acceleration_due_to_electron(ri, rt, ai)
+
+		!Initial values of conserved quantities
+		call compute_conserved_quantities(r0, v0, U0, L0)
+
+		Ui = U0
+		Li = L0
+
+		write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), Li, 100*(dabs(Li-L0)/L0)
+		j = 1
+
+		!Always checking for the Closest Distance to the Scattering Center
+		approaching_center = .true.
+		closest_distance_scattering_center = norm2(ri)
+		closest_position_scattering_center = ri
+
 		estimated_time = .true.
 		!Start timer RIGHT before the first iteration
-		call cpu_time(startT)
+		call cpu_time(start_time)
 
-		do i=1,T
+		do i = 1, max_iterations
 			!Plotting only N points
-			if ( (mod(i,T/N) .eq. 0) .and. j .lt. N ) then
+			if ( (mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. j .lt. num_plot_ploints) then
+				!Computing conserved quantities
+				call compute_conserved_quantities(ri, vi, Ui, Li)
 
 				!Write values to file
-				write(ou,*) ti, ri
+				write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), Li, 100*(dabs(Li-L0)/L0)
 				j = j + 1
 
 				!For estimation of simulation time (it runs only once)
 				if (estimated_time) then
 					!Compute iteration time after 1/N-enth of the simulation
-					call cpu_time(endT)
-					execTime = endT - startT
-					call cpu_time(startT)
+					call cpu_time(end_time)
+					total_time = end_time - start_time
+					call cpu_time(start_time)
 					!Estimate simulation time, print to console and output file
 					call fdate(current_time)
-					FMTS = "('Estimated simulation time: ', f8.2, '[s]', f8.2, '[min]')"
+					format_string = "('Estimated simulation time: ', f8.2, '[s]', f8.2, '[min]')"
 					!Print to console
 					print "('Start time:                ', a)", current_time
-					print FMTS, execTime*N, execTime*N/60
+					print format_string, total_time*num_plot_ploints, total_time*num_plot_ploints/60
 					!Write to Output Info File
-					write(oiu, "('*** SIMULATION TIME ***')")
-					write(oiu, "('Start time:                ', a)") current_time
-					write(oiu, FMTS) execTime*N, execTime*N/60
+					write(info_output_unit, "('*** SIMULATION TIME ***')")
+					write(info_output_unit, "('Start time:                ', a)") current_time
+					write(info_output_unit, format_string) total_time*num_plot_ploints, total_time*num_plot_ploints/60
 					!To only run this statement once
 					estimated_time = .false.
 				end if
@@ -155,29 +178,90 @@ program rutherfhord_scattering_test_simulations
 			end if
 
 			!Velocity Verlet step calculation
-			call vv_step(i, rt, t0, dt, ti, ri, vi, ai)
-			
+			call velocity_verlet_step(i, rt, t0, dt, ti, ri, vi, ai)
+
+			!Checking if still approching center, searching closest distance to center
+			if (approaching_center) then
+				distance_scattering_center = norm2(ri)
+				if (distance_scattering_center .gt. closest_distance_scattering_center) then
+					approaching_center = .false.
+				else
+					closest_distance_scattering_center = distance_scattering_center
+					closest_position_scattering_center = ri
+				end if
+			end if
+
 		end do
 
-		call cpu_time(endT)
-		execTime = execTime + (endT - startT)
+		call cpu_time(end_time)
+		total_time = total_time + (end_time - start_time)
 
 		call fdate(current_time)
-		FMTS = "('Total simulation time:     ', f8.2, '[s]', f8.2, '[min]')"
+		format_string = "('Total simulation time:     ', f8.2, '[s]', f8.2, '[min]')"
 		!Print to console
 		print "('End time:                  ', a)", current_time
-		print FMTS, execTime, execTime/60
+		print format_string, total_time, total_time/60
 		!Write to Output Info File
-		write(oiu, "('End time:                  ', a)") current_time
-		write(oiu, FMTS) execTime, execTime/60
+		write(info_output_unit, "('End time:                  ', a)") current_time
+		write(info_output_unit, format_string) total_time, total_time/60
 
 		!Add blank space on Output Info File
-		write (oiu, *)
-		
+		write (info_output_unit, *)
+
+		!***************************************************************************
+		!Scattering Angles computation and comparison
+		write(info_output_unit, "('*** SCATTERING ANGLE COMPARISONS ***')")
+
+		!Theoretical Scattering Angle
+		scattering_angle_theoretical = 2*datan(1/(2*K0*b))
+		format_string = "('Theoretical Scattering Angle (TSA): ', f20.16, 'º')"
+		write(info_output_unit, format_string) scattering_angle_theoretical*180/PI
+		!Plot Scattering Angle
+		scattering_angle_plot = datan2(yf,xf)
+		if (yf .lt. 0._dp) scattering_angle_plot = 2*PI + scattering_angle_plot
+		format_string = "('Plot Scattering Angle (PSA):        ', f20.16, 'º')"
+		write(info_output_unit, format_string) scattering_angle_plot*180/PI
+		!Simulation Scattering Angle
+		scattering_angle_simulation = datan2(ri(2),ri(1))
+		if (ri(2) .lt. 0._dp) scattering_angle_simulation = 2*PI + scattering_angle_simulation
+		format_string = "('Simulation Scattering Angle (SSA):  ', f20.16, 'º')"
+		write(info_output_unit, format_string) scattering_angle_simulation*180/PI
+
+		!Comparison between SSA and PSA
+		format_string = "('Percent error between SSA and PSA: ', d12.4, '%')"
+		write(info_output_unit, format_string) 100*dabs(scattering_angle_simulation-scattering_angle_plot)/scattering_angle_plot
+		!Comparison between SSA and TSA
+		format_string = "('Percent error between SSA and TSA: ', d12.4, '%')"
+		write(info_output_unit, format_string) 100*dabs(scattering_angle_simulation-scattering_angle_theoretical)/scattering_angle_theoretical
+		!Comparison between PSA and TSA
+		format_string = "('Percent error between PSA and TSA: ', d12.4, '%')"
+		write(info_output_unit, format_string) 100*dabs(scattering_angle_plot-scattering_angle_theoretical)/scattering_angle_theoretical
+
+		!Add blank space on Output Info File
+		write(info_output_unit, *)
+
+		!***************************************************************************
+		!Closest distance and position to scattering center
+
+		write(info_output_unit, "('*** CLOSEST DISTANCE AND POSITION TO SCATTERING CENTER ***')")
+		format_string = "('Closest distance to scattering center:   ', d12.4, '[au]')"
+		write(info_output_unit, format_string) closest_distance_scattering_center
+		format_string = "('Closest postion to scattering center, x: ', d12.4, '[au]')"
+		write(info_output_unit, format_string) closest_position_scattering_center(1)
+		format_string = "('Closest postion to scattering center, y: ', d12.4, '[au]')"
+		write(info_output_unit, format_string) closest_position_scattering_center(2)
+		format_string = "('Closest postion to scattering center, z: ', d12.4, '[au]')"
+		write(info_output_unit, format_string) closest_position_scattering_center(3)
+
+		close(output_unit)
+		close(info_output_unit)
+
+		print*
+
 	end do
 
-	close(inu)
-	close(icu)
+	close(input_values_unit)
+	close(input_chars_unit)
 	call system ("rm "//aux_file)
 	
 	contains
@@ -428,90 +512,86 @@ program rutherfhord_scattering_test_simulations
 
 	end subroutine compute_conserved_quantities
 
-!=============================================================================
-! Subroutine : acceleration_point_charge
-! Purpose    : Compute the acceleration experienced by a moving electron due to
-!              a stationary unit-charge target (Coulomb force in atomic units).
-! Arguments  :
-!   - real(dp), intent(in)  :: rt(3)
-!       Position vector of the fixed (target) charge (a0).
-!   - real(dp), intent(in)  :: ri(3)
-!       Position vector of the incident (moving) charge (a0).
-!   - real(dp), intent(out) :: a(3)
-!       Acceleration vector acting on the incident charge (a0 / aut²).
-!=============================================================================
-subroutine acceleration_point_charge(rt, ri, a)
-   implicit none
+	!=============================================================================
+	! Subroutine: acceleration_due_to_electron
+	! Purpose   : Calculate the acceleration vector experienced by a projectile
+	!             electron due to the electrostatic interaction with a stationary
+	!             target electron, based on their positions.
+	! Arguments :
+	!   - real(dp), intent(in) :: rp(3)
+	!       Position vector of the projectile electron in atomic units (a0).
+	!   - real(dp), intent(in) :: rt(3)
+	!       Position vector of the target electron in atomic units (a0/aut).
+	!   - real(dp), intent(out) :: a(3)
+	!       Acceleration vector experienced by the projectile electron due to
+	!       the target electron in atomic units (a0/aut^2).
+	!=============================================================================
+	subroutine acceleration_due_to_electron(rp, rt, a)
+		implicit none
 
-   ! Input variables
-   real(dp), intent(in)  :: rt(3), ri(3)
+		! Input/Output variables
+		real(dp), intent(in) :: rp(3)	! Position of the projectile electron (a0)
+		real(dp), intent(in) :: rt(3) ! Position of the target electron (a0)
+		real(dp), intent(out) :: a(3) ! Resulting acceleration vector (a0/aut^2)
 
-   ! Output variables
-   real(dp), intent(out) :: a(3)
+		! Local variables
+		real(dp) :: rs(3)	! Separation vector between the electrons (a0)
+		real(dp) :: r			! Magnitude of the separation vector (a0)
 
-   ! Local variables
-   real(dp) :: r_sep(3)          ! Separation vector   (ri − rt)
-   real(dp) :: r_mag             ! Magnitude of r_sep  (a0)
+		! Compute the separation vector between electrons and its magnitude
+		rs = rp - rt
+		r = norm2(rs)
 
-   !---------------------------------------------------------------------------
-   r_sep = ri - rt
-   r_mag = norm2(r_sep)
+		! Determine the acceleration using Coulomb's law in atomic units
+		a = rs/(r**3)
 
-   ! Coulomb acceleration   a = r_sep / r_mag³      (e = m = 1 in a.u.)
-   a = r_sep / (r_mag**3)
+	end subroutine acceleration_due_to_electron
 
-end subroutine acceleration_point_charge
+	!=============================================================================
+	! Subroutine : velocity_verlet_step
+	! Purpose    : Advance the position, velocity, and acceleration of the moving
+	!              particle by one Velocity-Verlet time step.
+	! Arguments  :
+	!   - integer(i8), intent(in)    :: i
+	!       Current iteration index.
+	!   - real(dp),    intent(in)    :: rt(3)
+	!       Position of the stationary target charge (a0).
+	!   - real(dp),    intent(in)    :: t0
+	!       Initial simulation time (aut).
+	!   - real(dp),    intent(in)    :: dt
+	!       Time-step size (aut).
+	!   - real(dp),    intent(inout) :: t
+	!       Current simulation time (aut).
+	!   - real(dp),    intent(inout) :: r(3)
+	!       Position vector of the moving charge (a0).
+	!   - real(dp),    intent(inout) :: v(3)
+	!       Velocity vector of the moving charge (a0 / aut).
+	!   - real(dp),    intent(inout) :: a(3)
+	!       Acceleration acting on the moving charge (a0 / aut²).
+	!=============================================================================
+	subroutine velocity_verlet_step(i, rt, t0, dt, t, r, v, a)
+		 implicit none
 
-!=============================================================================
-! Subroutine : velocity_verlet_step
-! Purpose    : Advance the position, velocity, and acceleration of the moving
-!              particle by one Velocity-Verlet time step.
-! Arguments  :
-!   - integer(i8), intent(in)    :: step_idx
-!       Current iteration index (starting at 1).
-!   - real(dp),    intent(in)    :: rt(3)
-!       Position of the stationary target charge (a0).
-!   - real(dp),    intent(in)    :: t0
-!       Initial simulation time (aut).
-!   - real(dp),    intent(in)    :: dt
-!       Time-step size (aut).
-!   - real(dp),    intent(inout) :: t
-!       Current simulation time (aut).
-!   - real(dp),    intent(inout) :: r(3)
-!       Position vector of the moving charge (a0).
-!   - real(dp),    intent(inout) :: v(3)
-!       Velocity vector of the moving charge (a0 / aut).
-!   - real(dp),    intent(inout) :: a(3)
-!       Acceleration acting on the moving charge (a0 / aut²).
-!=============================================================================
-subroutine velocity_verlet_step(step_idx, rt, t0, dt, t, r, v, a)
-   implicit none
+		 ! Input/Output variables
+		 integer(i8), intent(in)    :: i
+		 real(dp),    intent(in)    :: rt(3), t0, dt
+		 real(dp),    intent(inout) :: t, r(3), v(3), a(3)
 
-   ! Input variables
-   integer(i8), intent(in)    :: step_idx
-   real(dp),    intent(in)    :: rt(3), t0, dt
+		 ! Time update
+		 t = t0 + i * dt
 
-   ! Input/Output variables
-   real(dp),    intent(inout) :: t, r(3), v(3), a(3)
+		 ! Half-step velocity update
+		 v = v + 0.5*a*dt
+		 
+		 ! Position update
+		 r = r + v*dt
+		 
+		 ! Full-step acceleration update at new position
+		 call acceleration_due_to_electron(r, rt, a)
+		 
+		 ! Second half-step velocity update
+		v = v + 0.5*a*dt
 
-   !---------------------------------------------------------------------------
-   ! 1. Update time
-   t = t0 + step_idx * dt
-
-   ! 2. Update position: r(t+dt) = r + v*dt + ½ a dt²
-   r = r + v*dt + 0.5_dp*a*dt*dt
-
-   ! 3. Half-step velocity update: v = v + ½ a dt
-   v = v + 0.5_dp*a*dt
-
-   ! 4. Recompute acceleration at the new position
-   call acceleration_point_charge(rt, r, a)
-
-   ! 5. Complete velocity update with new acceleration
-   v = v + 0.5_dp*a*dt
-
-end subroutine velocity_verlet_step
-
-
+	end subroutine velocity_verlet_step
 	
 end program rutherfhord_scattering_test_simulations
