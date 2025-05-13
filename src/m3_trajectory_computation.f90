@@ -131,8 +131,8 @@ module m3_trajectory_computation
 
 		! Input/Output variables
 		real(dp), intent(in) :: rp(3)	! Position of the projectile electron (a0)
-		real(dp), intent(in) :: rt(3) ! Position of the target electron (a0)
-		real(dp), intent(out) :: a(3) ! Resulting acceleration vector (a0/aut^2)
+		real(dp), intent(in) :: rt(3)	! Position of the target electron (a0)
+		real(dp), intent(out) :: a(3)	! Resulting acceleration vector (a0/aut^2)
 
 		! Local variables
 		real(dp) :: rs(3)	! Separation vector between the electrons (a0)
