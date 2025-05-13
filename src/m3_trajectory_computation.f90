@@ -510,7 +510,7 @@ module m3_trajectory_computation
 			! Check for scattering end condition: electron is outside the material
 			! and exceeds its initial distance to target
 			if (distance_to_target .gt. initial_distance_to_target .and. &
-			r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+				r(2) .gt. MATERIAL_HEIGHT_SIO2) then
 				! Update scattered condition flag, scattered number and positions
 				is_scattered = .true.
 				num_scattered = num_scattered + 1

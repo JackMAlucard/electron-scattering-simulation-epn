@@ -79,14 +79,14 @@ module m4_optimized_trajectory_computation
 
 		! Allocate array for the charges of super electrons in each cell
 		allocate &
-		(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk, &
+			(super_electron_charges(-pbi:pbi,-pbj:-1,-pbk:pbk, &
 			max_num_super_electrons))
 		! Initialize as zero, since there are no super electrons at the start
 		super_electron_charges = 0
 
 		! Allocating array that stores the super electrons positions on all cells
 		allocate &
-		(super_electron_positions(-pbi:pbi,-pbj:-1,-pbk:pbk, &
+			(super_electron_positions(-pbi:pbi,-pbj:-1,-pbk:pbk, &
 			max_num_super_electrons,3))
 		! Initialize as zero, the positions will be given as the mean of the
 		! positions of the electrons that form the super electron
@@ -580,7 +580,7 @@ module m4_optimized_trajectory_computation
 			! Time step update: Approximated, projectile electron's distance to target
 			! material is greater than EFFECTIVE_DISTANCE and not in material zone
 			if (distance_to_target .gt. EFFECTIVE_DISTANCE .and. &
-			.not. in_material) then
+				.not. in_material) then
 				call time_step_approximate &
 				(num_embedded, partition_boundaries, num_super_electrons, &
 				super_electron_charges, super_electron_positions, dt, r, v, a)
@@ -652,7 +652,7 @@ module m4_optimized_trajectory_computation
 			! Check for scattering end condition: electron is outside the material
 			! and exceeds its initial distance to target
 			if (distance_to_target .gt. initial_distance_to_target .and. &
-			r(2) .gt. MATERIAL_HEIGHT_SIO2) then
+				r(2) .gt. MATERIAL_HEIGHT_SIO2) then
 				! Update scattered condition flag, scattered number and positions
 				is_scattered = .true.
 				num_scattered = num_scattered + 1
