@@ -68,80 +68,83 @@ program rutherfhord_scattering_test_simulations
 	! Program structure variables
 	integer(i8) :: i, j, k
 
-	!Reading fixed parameters from input file
-	!Open input file twice: unit 11 to use as numbers, unit 12 to use as chars
+	! Input reading: copy file and open for numeric and char input
 	call system ("cp "//input_file//" "//aux_file)
 	open(unit=input_values_unit, file=input_file, status='unknown')
 	open(unit=input_chars_unit, file=aux_file, status='unknown')
 
-	!Skip the first 5 lines of the input file
+	!Skip the first 5 lines of the input file (header)
 	do i = 1, 5
 		read(input_values_unit, *)
 		read(input_chars_unit, *)
 	end do
 
-	!# of simulations/parameter sets
+	! Read input: number of simulations and points
 	read(input_values_unit, *) num_simulations
 	read(input_chars_unit, *)
-	!# of points to be plotted
 	read(input_values_unit, *) num_plot_ploints
 	read(input_chars_unit, *)
-	!Initial kinetic energy, K0 [keV]
-	read(input_values_unit, *) K0f
+	
+	! Read input: fixed parameters
+	read(input_values_unit, *) K0f				! Initial kinetic energy, K0 [keV]
 	read(input_chars_unit, *) K0_char
 	K0_char_trim = trim(K0_char)
-	!Initial horizontal distance, hd [Å]
-	read(input_values_unit, *) x0f
+	
+	read(input_values_unit, *) x0f				! Initial horizontal distance, x0 [Å]
 	read(input_chars_unit, *) x0_char
 	x0_char_trim = trim(x0_char)
 
-	!Skip the next 4 lines of the input file
+	! Skip the next 4 lines of the input file (intermediate section)
 	do i = 1, 4
 		read(input_values_unit, *)
 		read(input_chars_unit, *)
 	end do
 
-!*******************************************************************************
 	do k = 1, num_simulations
-		!Fixed parameter values
+		! Assign fixed values
 		K0 = K0f
 		x0 = x0f
-		!Reading variable parameters from input file
-		!Impact parameter, b [Å]
-		read(input_values_unit, *) b
+
+		! Read input: variable parameters
+		read(input_values_unit, *) b				! Impact parameter, b [Å]
 		read(input_chars_unit, *) b_char
 		b_char_trim = trim(b_char)
-		!Time step size, dt [aut]
-		read(input_values_unit, *) dt
+		
+		read(input_values_unit, *) dt				! Time step size, dt [aut]
 		read(input_chars_unit, *) dt_char
 		dt_char_trim = trim(dt_char)
 
-		!Naming and opening output files
-		output_file = K0_char_trim//'_'//x0_char_trim//'_'//b_char_trim//'_'//dt_char_trim
+		! Generate output file names
+		output_file = 'K0_'//K0_char_trim//'_x0_'//x0_char_trim// &
+			'_b_'//b_char_trim//'_dt_'//dt_char_trim
 		info_output_file = output_file//'_info.dat'
 		output_file = output_file//'.dat'
+
+		! Open output files
 		open(unit=output_unit, file=output_file, status='unknown')
 		open(unit=info_output_unit, file=info_output_file, status='unknown')
 
-		!Simulation info to print in console
-		write (info_output_unit, "('*** ELECTRON-ELECTRON SCATTERING ***')")
+		! Simulation info to console and file
+		write(info_output_unit, "('*** ELECTRON-ELECTRON SCATTERING ***')")
 		print "('SIMULATION ', i3, ' OUT OF ', i3)", k, num_simulations
-		print*, 'K0: '//K0_char_trim//'[keV], hd: '//x0_char_trim//'[Å], b: '//b_char_trim//'[Å], dt: '//dt_char_trim//'[aut]'
-		!Unit conversion of simulation parameters to au and printing to info file
-		call parameter_initialization(info_output_unit, num_plot_ploints, K0, x0, b, dt, r0, v0, max_iterations)
-		!Add blank space on Output Info File
-		write (info_output_unit, *)
+		print*, 'K0: '//K0_char_trim//'[keV], hd: '//x0_char_trim// &
+			'[Å], b: '//b_char_trim//'[Å], dt: '//dt_char_trim//'[aut]'
 
-		!***************************************************************************
-		!Theoretical trajectory
-		!Plotting N points
-		call compute_theoretical_trajectory(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
-		xf, yf)
-		!Add blank space on Output Info File
-		write (info_output_unit, *)
+		! Initialize parameters and estimate number of time steps
+		call parameter_initialization &
+			(info_output_unit, num_plot_ploints, K0, x0, b, dt, r0, v0, &
+			max_iterations)
+		
+		write(info_output_unit, *)   ! Blank line on Output Info File
+		
+		! Theoretical trajectory
+		call compute_theoretical_trajectory &
+			(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
+			xf, yf)
+		
+		write(info_output_unit, *)   ! Blank line on Output Info File
 
-		!***************************************************************************
-		!Simulation initialization
+		! Initialize simulation
 		rt = 0
 
 		ti = t0
@@ -149,86 +152,96 @@ program rutherfhord_scattering_test_simulations
 		vi = v0
 		call acceleration_due_to_electron(ri, rt, ai)
 
-		!Initial values of conserved quantities
+		! Initialize conserved quantities
 		call compute_conserved_quantities(r0, v0, U0, L0)
-
 		Ui = U0
 		Li = L0
 
-		write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), Li, 100*(dabs(Li-L0)/L0)
+		write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), &
+			Li, 100*(dabs(Li-L0)/L0)
+		
 		j = 1
 
-		!Always checking for the Closest Distance to the Scattering Center
+		! Closest Distance to the Scattering Center check
 		approaching_center = .true.
 		closest_distance_scattering_center = norm2(ri)
 		closest_position_scattering_center = ri
 
 		estimated_time = .true.
-		!Start timer RIGHT before the first iteration
-		call cpu_time(start_time)
+		call cpu_time(start_time)	! Start simulation timer
 
 		do i = 1, max_iterations
-			!Plotting only N points
-			if ( (mod(i,max_iterations/num_plot_ploints) .eq. 0) .and. j .lt. num_plot_ploints) then
-				!Computing conserved quantities
+			! Conditional logic used to only plot num_plot_ploints
+			if ((mod(i,max_iterations/num_plot_ploints) .eq. 0) &
+				.and. j .lt. num_plot_ploints) then
+				! Update conserved quantities
 				call compute_conserved_quantities(ri, vi, Ui, Li)
 
-				!Write values to file
-				write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), Li, 100*(dabs(Li-L0)/L0)
+				! Write simulation values to file
+				write(output_unit,*) ti, ri, Ui, 100*(dabs(Ui-U0)/U0), &
+					Li, 100*(dabs(Li-L0)/L0)
+				
 				j = j + 1
 
-				!For estimation of simulation time (it runs only once)
+				! Simulation execution time estimation (it runs only once)
 				if (estimated_time) then
-					!Compute iteration time after 1/N-enth of the simulation
+					! Compute iteration time after 1/N-enth of the simulation
 					call cpu_time(end_time)
 					total_time = end_time - start_time
 					call cpu_time(start_time)
-					!Estimate simulation time, print to console and output file
 					call fdate(current_time)
-					format_string = "('Estimated simulation time: ', f8.2, '[s]', f8.2, '[min]')"
-					!Print to console
+					format_string = "('Estimated simulation time: ', f8.2, '[s]', &
+						&f8.2, '[min]')"
+					
 					print "('Start time:                ', a)", current_time
-					print format_string, total_time*num_plot_ploints, total_time*num_plot_ploints/60
-					!Write to Output Info File
+					print format_string, total_time*num_plot_ploints, &
+						total_time*num_plot_ploints/60
+					
 					write(info_output_unit, "('*** SIMULATION TIME ***')")
-					write(info_output_unit, "('Start time:                ', a)") current_time
-					write(info_output_unit, format_string) total_time*num_plot_ploints, total_time*num_plot_ploints/60
-					!To only run this statement once
+					write(info_output_unit, "('Start time:                ', a)") &
+						current_time
+					write(info_output_unit, format_string) total_time*num_plot_ploints, &
+						total_time*num_plot_ploints/60
+					
 					estimated_time = .false.
 				end if
 
 			end if
 
-			!Velocity Verlet step calculation
+			! Compute next time step using Velocity Verlet algorithm
 			call velocity_verlet_step(i, rt, t0, dt, ti, ri, vi, ai)
 
-			!Checking if still approching center, searching closest distance to center
+			! Track approach to scattering center
 			if (approaching_center) then
 				distance_scattering_center = norm2(ri)
-				if (distance_scattering_center .gt. closest_distance_scattering_center) then
+				
+				if (distance_scattering_center .gt. &
+					closest_distance_scattering_center) then
 					approaching_center = .false.
 				else
 					closest_distance_scattering_center = distance_scattering_center
 					closest_position_scattering_center = ri
 				end if
+				
 			end if
 
 		end do
 
+		! Compute total simulation execution time
 		call cpu_time(end_time)
 		total_time = total_time + (end_time - start_time)
 
 		call fdate(current_time)
-		format_string = "('Total simulation time:     ', f8.2, '[s]', f8.2, '[min]')"
-		!Print to console
+		format_string = "('Total simulation time:     ', f8.2, '[s]', &
+			&f8.2, '[min]')"
+		
 		print "('End time:                  ', a)", current_time
 		print format_string, total_time, total_time/60
-		!Write to Output Info File
+		
 		write(info_output_unit, "('End time:                  ', a)") current_time
 		write(info_output_unit, format_string) total_time, total_time/60
 
-		!Add blank space on Output Info File
-		write (info_output_unit, *)
+		write(info_output_unit, *)   ! Blank line on Output Info File
 
 		!***************************************************************************
 		!Scattering Angles computation and comparison
@@ -237,12 +250,14 @@ program rutherfhord_scattering_test_simulations
 		!Theoretical Scattering Angle
 		scattering_angle_theoretical = 2*datan(1/(2*K0*b))
 		format_string = "('Theoretical Scattering Angle (TSA): ', f20.16, 'º')"
-		write(info_output_unit, format_string) scattering_angle_theoretical*180/PI
+		write(info_output_unit, format_string) scattering_angle_theoretical*180/
+		
 		!Plot Scattering Angle
 		scattering_angle_plot = datan2(yf,xf)
 		if (yf .lt. 0._dp) scattering_angle_plot = 2*PI + scattering_angle_plot
 		format_string = "('Plot Scattering Angle (PSA):        ', f20.16, 'º')"
 		write(info_output_unit, format_string) scattering_angle_plot*180/PI
+		
 		!Simulation Scattering Angle
 		scattering_angle_simulation = datan2(ri(2),ri(1))
 		if (ri(2) .lt. 0._dp) scattering_angle_simulation = 2*PI + scattering_angle_simulation
@@ -260,8 +275,7 @@ program rutherfhord_scattering_test_simulations
 		format_string = "('Percent error between PSA and TSA: ', d12.4, '%')"
 		write(info_output_unit, format_string) 100*dabs(scattering_angle_plot-scattering_angle_theoretical)/scattering_angle_theoretical
 
-		!Add blank space on Output Info File
-		write(info_output_unit, *)
+		write(info_output_unit, *)   ! Blank line on Output Info File
 
 		!***************************************************************************
 		!Closest distance and position to scattering center
