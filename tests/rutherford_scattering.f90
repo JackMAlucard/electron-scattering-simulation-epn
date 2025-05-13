@@ -2,7 +2,7 @@
 ! This program is intended as a proof of concept to become familiar with the
 ! Velocity Verlet algorithm, Rutherford Scattering, and how the different
 ! geometric and physical parameters used impact the resulting simulations.
-program rutherfhord_scattering_test_simulations
+program rutherford_scattering_test_simulations
 	
 	use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
 	implicit none
@@ -19,7 +19,7 @@ program rutherfhord_scattering_test_simulations
 	
 	! Input/output files, filenames, and format string
 	character(len=*), parameter :: input_file = "input.txt", aux_file = "aux.txt"
-	character(len=10) :: K0_char, x0_char, b_char, dt_char ! 10 characters max
+	character(len=10) :: K0_char, x0_char, b_char, dt_char	! 10 characters max
 	character(len=:), allocatable :: K0_char_trim, x0_char_trim
 	character(len=:), allocatable :: b_char_trim, dt_char_trim
 	character(len=:), allocatable :: output_file, info_output_file
@@ -45,7 +45,7 @@ program rutherfhord_scattering_test_simulations
 	real(dp) :: r0(3), v0(3)		! Initial position and velocity
 	real(dp) :: ti, ri(3)				! Time and position
 	real(dp) :: vi(3)						! Velocity
-	real(dp) :: ai(3) 					! Acceleration
+	real(dp) :: ai(3)						! Acceleration
 	
 	! Conserved quantities computation
 	real(dp) :: U0, L0, Ui, Li
@@ -134,14 +134,14 @@ program rutherfhord_scattering_test_simulations
 			(info_output_unit, num_plot_ploints, K0, x0, b, dt, r0, v0, &
 			max_iterations)
 		
-		write(info_output_unit, *)   ! Blank line on Output Info File
+		write(info_output_unit, *)		! Blank line on Output Info File
 		
 		! Theoretical trajectory
 		call compute_theoretical_trajectory &
 			(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
 			xf, yf)
 		
-		write(info_output_unit, *)   ! Blank line on Output Info File
+		write(info_output_unit, *)		! Blank line on Output Info File
 
 		! Initialize simulation
 		rt = 0
@@ -167,7 +167,7 @@ program rutherfhord_scattering_test_simulations
 		closest_position_scattering_center = ri
 
 		estimated_time = .true.
-		call cpu_time(start_time)	! Start simulation timer
+		call cpu_time(start_time)		! Start simulation timer
 
 		do i = 1, max_iterations
 			! Conditional logic used to plot only num_plot_ploints
@@ -279,7 +279,7 @@ program rutherfhord_scattering_test_simulations
 		write(info_output_unit, format_string) &
 			100*dabs(scat_angle_plot - scat_angle_theoretical)/scat_angle_theoretical
 
-		write(info_output_unit, *)   ! Blank line on Output Info File
+		write(info_output_unit, *)		! Blank line on Output Info File
 
 		write(info_output_unit, "('*** CLOSEST DISTANCE AND POSITION &
 			&TO SCATTERING CENTER ***')")
@@ -350,9 +350,9 @@ program rutherfhord_scattering_test_simulations
 
 		! Local variables
 		real(dp) :: conv_aux	! Auxiliary variable for unit conversion
-		real(dp) :: v         ! Velocity magnitude (a0/aut)
-		real(dp) :: a         ! Approximate constant acceleration (a0/aut^2)
-		real(dp) :: tf        ! Estimated final simulation time (aut)
+		real(dp) :: v					! Velocity magnitude (a0/aut)
+		real(dp) :: a					! Approximate constant acceleration (a0/aut^2)
+		real(dp) :: tf				! Estimated final simulation time (aut)
 		character(len=80) :: format_param_write_string
 
 		! Output basic simulation configuration
@@ -382,7 +382,7 @@ program rutherfhord_scattering_test_simulations
 		write(info_output_unit, format_param_write_string) conv_aux, b
 
 		! Convert and print time step size, dt
-		conv_aux = dt * 2.418d-17  ! Convert from aut to seconds
+		conv_aux = dt * 2.418d-17	! Convert from aut to seconds
 		format_param_write_string = &
 		"('Time step size, dt:             ', d12.4, '[aut] =', d12.4, '[s]')"
 		write(info_output_unit, format_param_write_string) dt, conv_aux
@@ -453,7 +453,7 @@ program rutherfhord_scattering_test_simulations
 		real(dp) :: phi0, phif, dphi, phii, ri		! Angular and radial coordinates
 		real(dp) :: xi, yi												! Cartesian coordinates
 		real(dp) :: alpha													! Asymptote/rotation angle
-		real(dp) :: den, num                      ! Auxiliary variables
+		real(dp) :: den, num											! Auxiliary variables
 		integer :: i
 
 		! Extract initial values
@@ -464,7 +464,7 @@ program rutherfhord_scattering_test_simulations
 		a = 1/(2*K0)					! Semi-major axis
 		b = y0								! Semi-minor axis
 		c = dsqrt(a*a + b*b)	! Distance to the center
-		e = c / a		! Eccentricity
+		e = c / a							! Eccentricity
 
 		! Print hyperbola parameters
 		write(info_output_unit, "('*** THEORETICAL TRAJECTORY PARAMETERS ***')")
@@ -542,7 +542,7 @@ program rutherfhord_scattering_test_simulations
 
 		 ! Energy calculation
 		 Uk = 0.5*(v(1)**2 + v(2)**2 + v(3)**2)	! Kinetic energy
-		 Ue = 1/norm2(r)             						! Electrostatic potential energy
+		 Ue = 1/norm2(r)												! Electrostatic potential energy
 		 U = Uk + Ue
 
 		 ! Angular-momentum vector   L = r × v
@@ -572,8 +572,8 @@ program rutherfhord_scattering_test_simulations
 
 		! Input/Output variables
 		real(dp), intent(in) :: rp(3)	! Position of the projectile electron (a0)
-		real(dp), intent(in) :: rt(3) ! Position of the target electron (a0)
-		real(dp), intent(out) :: a(3) ! Resulting acceleration vector (a0/aut^2)
+		real(dp), intent(in) :: rt(3)	! Position of the target electron (a0)
+		real(dp), intent(out) :: a(3)	! Resulting acceleration vector (a0/aut^2)
 
 		! Local variables
 		real(dp) :: rs(3)	! Separation vector between the electrons (a0)
@@ -635,4 +635,4 @@ program rutherfhord_scattering_test_simulations
 
 	end subroutine velocity_verlet_step
 	
-end program rutherfhord_scattering_test_simulations
+end program rutherford_scattering_test_simulations
