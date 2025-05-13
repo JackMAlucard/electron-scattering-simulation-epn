@@ -6,7 +6,6 @@ program rutherfhord_scattering_test_simulations
 	
 	use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
 	implicit none
-	! NUMERICAL CONSTANTS
 	! Kind type parameters for increased real precision and integer length
 	! Single precision reals, 6 digits, range 10**(-37) to 10**(37)-1; 32 bits
 	integer, parameter :: sp = selected_real_kind(6, 37)
@@ -52,8 +51,7 @@ program rutherfhord_scattering_test_simulations
 	real(dp) :: U0, L0, Ui, Li
 		
 	! Scattering angles computation and comparison
-	real(dp) :: scattering_angle_theoretical
-	real(dp) :: scattering_angle_plot, scattering_angle_simulation
+	real(dp) :: scat_angle_theoretical, scat_angle_plot, scat_angle_sim
 	
 	! Simulation timing
 	logical :: estimated_time
@@ -68,18 +66,18 @@ program rutherfhord_scattering_test_simulations
 	! Program structure variables
 	integer(i8) :: i, j, k
 
-	! Input reading: copy file and open for numeric and char input
+	! Copy input file and open for numeric and char input
 	call system ("cp "//input_file//" "//aux_file)
 	open(unit=input_values_unit, file=input_file, status='unknown')
 	open(unit=input_chars_unit, file=aux_file, status='unknown')
 
-	!Skip the first 5 lines of the input file (header)
+	! Skip the first 5 lines of the input file (header)
 	do i = 1, 5
 		read(input_values_unit, *)
 		read(input_chars_unit, *)
 	end do
 
-	! Read input: number of simulations and points
+	! Read input: number of simulations to be executed and points to be plotted
 	read(input_values_unit, *) num_simulations
 	read(input_chars_unit, *)
 	read(input_values_unit, *) num_plot_ploints
@@ -125,7 +123,8 @@ program rutherfhord_scattering_test_simulations
 		open(unit=info_output_unit, file=info_output_file, status='unknown')
 
 		! Simulation info to console and file
-		write(info_output_unit, "('*** ELECTRON-ELECTRON SCATTERING ***')")
+		write(info_output_unit, "('*** ELECTRON-ELECTRON &
+			&RUTHERFORD SCATTERING ***')")
 		print "('SIMULATION ', i3, ' OUT OF ', i3)", k, num_simulations
 		print*, 'K0: '//K0_char_trim//'[keV], hd: '//x0_char_trim// &
 			'[Å], b: '//b_char_trim//'[Å], dt: '//dt_char_trim//'[aut]'
@@ -162,7 +161,7 @@ program rutherfhord_scattering_test_simulations
 		
 		j = 1
 
-		! Closest Distance to the Scattering Center check
+		! Closest distance to the scattering center check
 		approaching_center = .true.
 		closest_distance_scattering_center = norm2(ri)
 		closest_position_scattering_center = ri
@@ -171,7 +170,7 @@ program rutherfhord_scattering_test_simulations
 		call cpu_time(start_time)	! Start simulation timer
 
 		do i = 1, max_iterations
-			! Conditional logic used to only plot num_plot_ploints
+			! Conditional logic used to plot only num_plot_ploints
 			if ((mod(i,max_iterations/num_plot_ploints) .eq. 0) &
 				.and. j .lt. num_plot_ploints) then
 				! Update conserved quantities
@@ -185,7 +184,7 @@ program rutherfhord_scattering_test_simulations
 
 				! Simulation execution time estimation (it runs only once)
 				if (estimated_time) then
-					! Compute iteration time after 1/N-enth of the simulation
+					! Compute iteration time after 1/num_plot_ploints of the simulation
 					call cpu_time(end_time)
 					total_time = end_time - start_time
 					call cpu_time(start_time)
@@ -242,54 +241,58 @@ program rutherfhord_scattering_test_simulations
 		write(info_output_unit, format_string) total_time, total_time/60
 
 		write(info_output_unit, *)   ! Blank line on Output Info File
-
-		!***************************************************************************
-		!Scattering Angles computation and comparison
-		write(info_output_unit, "('*** SCATTERING ANGLE COMPARISONS ***')")
-
-		!Theoretical Scattering Angle
-		scattering_angle_theoretical = 2*datan(1/(2*K0*b))
-		format_string = "('Theoretical Scattering Angle (TSA): ', f20.16, 'º')"
-		write(info_output_unit, format_string) scattering_angle_theoretical*180/
 		
-		!Plot Scattering Angle
-		scattering_angle_plot = datan2(yf,xf)
-		if (yf .lt. 0._dp) scattering_angle_plot = 2*PI + scattering_angle_plot
-		format_string = "('Plot Scattering Angle (PSA):        ', f20.16, 'º')"
-		write(info_output_unit, format_string) scattering_angle_plot*180/PI
-		
-		!Simulation Scattering Angle
-		scattering_angle_simulation = datan2(ri(2),ri(1))
-		if (ri(2) .lt. 0._dp) scattering_angle_simulation = 2*PI + scattering_angle_simulation
-		format_string = "('Simulation Scattering Angle (SSA):  ', f20.16, 'º')"
-		write(info_output_unit, format_string) scattering_angle_simulation*180/PI
+		write(info_output_unit, "('*** SCATTERING ANGLES COMPUTATION ***')")
 
-		!Comparison between SSA and PSA
-		format_string = "('Percent error between SSA and PSA: ', d12.4, '%')"
-		write(info_output_unit, format_string) 100*dabs(scattering_angle_simulation-scattering_angle_plot)/scattering_angle_plot
-		!Comparison between SSA and TSA
-		format_string = "('Percent error between SSA and TSA: ', d12.4, '%')"
+		! Theoretical Scattering Angle
+		scat_angle_theoretical = 2*datan(1/(2*K0*b))
+		format_string = "('Theoretical Scattering Angle: ', f20.16, 'º')"
+		write(info_output_unit, format_string) scat_angle_theoretical*180/PI
+		
+		! Plot Scattering Angle
+		scat_angle_plot = datan2(yf,xf)
+		if (yf .lt. 0._dp)scat_angle_plot = 2*PI + scat_angle_plot
+		format_string = "('Plot Scattering Angle:        ', f20.16, 'º')"
+		write(info_output_unit, format_string) scat_angle_plot*180/PI
+		
+		! Simulation Scattering Angle
+		scat_angle_sim = datan2(ri(2),ri(1))
+		if (ri(2) .lt. 0._dp) scat_angle_sim = 2*PI + scat_angle_sim
+		format_string = "('Simulation Scattering Angle:  ', f20.16, 'º')"
+		write(info_output_unit, format_string) scat_angle_sim*180/PI
+		
+		write(info_output_unit, "('*** SCATTERING ANGLES COMPARISON ***')")
+		write(info_output_unit, "('Percent error between...')")
+
+		! Comparison between simulation and plot scattering angles
+		format_string = "('  simulation and plot angles:        ', d12.4, '%')"
 		write(info_output_unit, format_string) &
-		100*dabs(scattering_angle_simulation-scattering_angle_theoretical)/scattering_angle_theoretical
-		!Comparison between PSA and TSA
-		format_string = "('Percent error between PSA and TSA: ', d12.4, '%')"
-		write(info_output_unit, format_string) 100*dabs(scattering_angle_plot-scattering_angle_theoretical)/scattering_angle_theoretical
+			100*dabs(scat_angle_sim - scat_angle_plot)/scat_angle_plot
+			
+		! Comparison between simulation and theoretical scattering angles
+		format_string = "('  simulation and theoretical angles: ', d12.4, '%')"
+		write(info_output_unit, format_string) &
+			100*dabs(scat_angle_sim - scat_angle_theoretical)/scat_angle_theoretical
+			
+		! Comparison between plot and theoretical scattering angle
+		format_string = "('  plot and theoretical angles:       ', d12.4, '%')"
+		write(info_output_unit, format_string) &
+			100*dabs(scat_angle_plot - scat_angle_theoretical)/scat_angle_theoretical
 
 		write(info_output_unit, *)   ! Blank line on Output Info File
 
-		!***************************************************************************
-		!Closest distance and position to scattering center
-
-		write(info_output_unit, "('*** CLOSEST DISTANCE AND POSITION TO SCATTERING CENTER ***')")
-		format_string = "('Closest distance to scattering center:   ', d12.4, '[au]')"
+		write(info_output_unit, "('*** CLOSEST DISTANCE AND POSITION &
+			&TO SCATTERING CENTER ***')")
+		format_string = "('Closest distance:   ', d12.4, '[au]')"
 		write(info_output_unit, format_string) closest_distance_scattering_center
-		format_string = "('Closest postion to scattering center, x: ', d12.4, '[au]')"
+		format_string = "('Closest postion, x: ', d12.4, '[au]')"
 		write(info_output_unit, format_string) closest_position_scattering_center(1)
-		format_string = "('Closest postion to scattering center, y: ', d12.4, '[au]')"
+		format_string = "('Closest postion, y: ', d12.4, '[au]')"
 		write(info_output_unit, format_string) closest_position_scattering_center(2)
-		format_string = "('Closest postion to scattering center, z: ', d12.4, '[au]')"
+		format_string = "('Closest postion, z: ', d12.4, '[au]')"
 		write(info_output_unit, format_string) closest_position_scattering_center(3)
 
+		! Close output files
 		close(output_unit)
 		close(info_output_unit)
 
@@ -297,6 +300,7 @@ program rutherfhord_scattering_test_simulations
 
 	end do
 
+	! Close input files opened for numeric and char input, delete duplicate file
 	close(input_values_unit)
 	close(input_chars_unit)
 	call system ("rm "//aux_file)
