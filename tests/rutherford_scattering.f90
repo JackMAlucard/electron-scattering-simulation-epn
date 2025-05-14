@@ -338,15 +338,15 @@ program rutherford_scattering_test_simulations
 		implicit none
 
 		! Input/Output variables
-		integer(i8), intent(in)    :: info_output_unit
+		integer(i8), intent(in) :: info_output_unit
 		integer(i8), intent(inout) :: num_plot_ploints
-		real(dp), intent(inout)    :: K0		! Initial kinetic energy (keV)
-		real(dp), intent(inout)    :: x0		! Initial horizontal distance (Å)
-		real(dp), intent(inout)    :: b			! Impact parameter (Å)
-		real(dp), intent(inout)    :: dt		! Time step size (aut)
-		real(dp), intent(out)      :: r0(3)	! Initial position vector (a0)
-		real(dp), intent(out)      :: v0(3)	! Initial velocity vector (a0/aut)
-		integer(i8), intent(out)   :: max_iterations
+		real(dp), intent(inout) :: K0		! Initial kinetic energy (keV)
+		real(dp), intent(inout) :: x0		! Initial horizontal distance (Å)
+		real(dp), intent(inout) :: b		! Impact parameter (Å)
+		real(dp), intent(inout) :: dt		! Time step size (aut)
+		real(dp), intent(out) :: r0(3)	! Initial position vector (a0)
+		real(dp), intent(out) :: v0(3)	! Initial velocity vector (a0/aut)
+		integer(i8), intent(out) :: max_iterations
 
 		! Local variables
 		real(dp) :: conv_aux	! Auxiliary variable for unit conversion
@@ -435,6 +435,10 @@ program rutherford_scattering_test_simulations
 	!       Distance to the center of the hyperbola, atomic units (a0).
 	!   - real(dp), intent(out) :: e
 	!       Eccentricity of the hyperbola, e > 1 dimensionless.
+	!   - real(dp), intent(out) :: xf
+	!       Final x-coordinate of the trajectory
+	!   - real(dp), intent(out) :: yf
+	!       Final y-coordinate of the trajectory
 	!=============================================================================
 	subroutine compute_theoretical_trajectory &
 		(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
@@ -513,11 +517,11 @@ program rutherford_scattering_test_simulations
 	end subroutine compute_theoretical_trajectory
 
 	!=============================================================================
-	! Subroutine : compute_conserved_quantities
-	! Purpose    : Calculate conserved mechanical quantities for a Coulomb
+	! Subroutine: compute_conserved_quantities
+	! Purpose   : Calculate conserved mechanical quantities for a Coulomb
 	!              interaction: total energy (kinetic + potential) and the
 	!              magnitude of the angular-momentum vector.
-	! Arguments  :
+	! Arguments :
 	!   - real(dp), intent(in)  :: r(3)
 	!       Position vector of the projectile electron (a0).
 	!   - real(dp), intent(in)  :: v(3)
@@ -531,8 +535,8 @@ program rutherford_scattering_test_simulations
 		 implicit none
 
 		 ! Input/Output variables
-		 real(dp), intent(in)  :: r(3)	! Position of the electron (a0)
-		 real(dp), intent(in)  :: v(3)	! Velocity of the electron (a0/aut)
+		 real(dp), intent(in) :: r(3)		! Position of the electron (a0)
+		 real(dp), intent(in) :: v(3)		! Velocity of the electron (a0/aut)
 		 real(dp), intent(out) :: U			! Total mechanical energy (Eh)
 		 real(dp), intent(out) :: L			! Angular momentum magnitude (ħ)
 
@@ -589,34 +593,34 @@ program rutherford_scattering_test_simulations
 	end subroutine acceleration_due_to_electron
 
 	!=============================================================================
-	! Subroutine : velocity_verlet_step
-	! Purpose    : Advance the position, velocity, and acceleration of the moving
+	! Subroutine: velocity_verlet_step
+	! Purpose   : Advance the position, velocity, and acceleration of the moving
 	!              particle by one Velocity-Verlet time step.
-	! Arguments  :
-	!   - integer(i8), intent(in)    :: i
+	! Arguments :
+	!   - integer(i8), intent(in) :: i
 	!       Current iteration index.
-	!   - real(dp),    intent(in)    :: rt(3)
+	!   - real(dp), intent(in) :: rt(3)
 	!       Position of the stationary target charge (a0).
-	!   - real(dp),    intent(in)    :: t0
+	!   - real(dp), intent(in) :: t0
 	!       Initial simulation time (aut).
-	!   - real(dp),    intent(in)    :: dt
+	!   - real(dp), intent(in) :: dt
 	!       Time-step size (aut).
-	!   - real(dp),    intent(inout) :: t
+	!   - real(dp), intent(inout) :: t
 	!       Current simulation time (aut).
-	!   - real(dp),    intent(inout) :: r(3)
+	!   - real(dp), intent(inout) :: r(3)
 	!       Position vector of the moving charge (a0).
-	!   - real(dp),    intent(inout) :: v(3)
+	!   - real(dp), intent(inout) :: v(3)
 	!       Velocity vector of the moving charge (a0 / aut).
-	!   - real(dp),    intent(inout) :: a(3)
+	!   - real(dp), intent(inout) :: a(3)
 	!       Acceleration acting on the moving charge (a0 / aut²).
 	!=============================================================================
 	subroutine velocity_verlet_step(i, rt, t0, dt, t, r, v, a)
 		 implicit none
 
 		 ! Input/Output variables
-		 integer(i8), intent(in)    :: i
-		 real(dp),    intent(in)    :: rt(3), t0, dt
-		 real(dp),    intent(inout) :: t, r(3), v(3), a(3)
+		 integer(i8), intent(in) :: i
+		 real(dp), intent(in) :: rt(3), t0, dt
+		 real(dp), intent(inout) :: t, r(3), v(3), a(3)
 
 		 ! Time update
 		 t = t0 + i * dt
