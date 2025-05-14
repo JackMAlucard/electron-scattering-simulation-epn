@@ -1,0 +1,29 @@
+! INPUT FILE (skip these first 5 lines)
+! Number of parameter sets, num_simulations (int, read only once)
+! Number of points to be plotted, num_plot_points (int, read only once)
+! Initial kinetic energy, K0 [keV] (read only once)
+! Initial horizontal distance, x0 [Å]	(read only once)
+8
+5000
+1.d1
+1.d+4
+!Impact parameter, b [Å] (read num_simulations times along with dt)
+!Time step size, dt [aut] (read num_simulations times along with b)
+!b: 1.d-1, 1.d-2 (the desired values written here as a guide)
+!dt: 1.d-4, 1.d-5 (the desired values written here as a guide)
+1.d0
+1.d-4
+1.d-1
+1.d-4
+1.d-2
+1.d-4
+1.d-3
+1.d-4
+1.d0
+1.d-5
+1.d-1
+1.d-5
+1.d-2
+1.d-5
+1.d-3
+1.d-5
