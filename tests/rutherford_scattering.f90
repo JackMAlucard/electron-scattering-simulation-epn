@@ -1,7 +1,34 @@
-! Rutherford Scattering Test Simulations
-! This program is intended as a proof of concept to become familiar with the
-! Velocity Verlet algorithm, Rutherford Scattering, and how the different
-! geometric and physical parameters used impact the resulting simulations.
+!===============================================================================
+! Program    : rutherford_scattering_test_simulations
+! Purpose    : This program is intended as a proof of concept to become familiar
+!              with the Velocity Verlet algorithm, Rutherford Scattering, and
+!              how the different geometric and physical parameters used impact
+!              the resulting simulations.
+! Description:
+!   This program executes the following steps:
+!     1. Read simulation input parameters from a file.
+!     2. Compute the theoretical hyperbolic trajectory.
+!     3. Compute the simulated trajectory using the Velocity Verlet algorithm.
+!     4. Compute conserved quantities (energy and angular momentum).
+!     5. Compute scattering angles and distnce of closest approach.
+! Input      :
+!   The following input parameters are read from the 'input.txt' file:
+!     - Number of simulations and plotting points
+!		  - Initial kinetic energy (K0) and horizontal distance (x0)
+!     - Pairs of values per simulation: impact parameter (b) and time step (dt)
+! Output     :
+!   For each simulation,
+!     - A '.dat' file with trajectory and conserved magnitudes data,
+!     - An accompanying '_info.dat' file with detailed simulation metadata.
+!   The '.dat' file contains two blocks of data separated by two blank lines.
+!   The first block contains the theoretical trajectory like this:
+!     x-coordinate, y-coordinate
+!   The second block contains the simulated magnitudes as follows:
+!     time, x-coordinate, y-coordinate, z-coordinate, total mechanical energy,
+!       total mechanical energy percent deviation fron initial value,
+!       angular momentum, angular momentum percent deviation fron initial value
+!   The output values are all in atomic units. 
+!===============================================================================
 program rutherford_scattering_test_simulations
 	
 	use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
