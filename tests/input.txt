@@ -7,10 +7,10 @@
 5000
 1.d1
 1.d+4
-!Impact parameter, b [Å] (read num_simulations times along with dt)
-!Time step size, dt [aut] (read num_simulations times along with b)
-!b: 1.d-1, 1.d-2 (the desired values written here as a guide)
-!dt: 1.d-4, 1.d-5 (the desired values written here as a guide)
+! Impact parameter, b [Å] (read num_simulations times along with dt)
+! Time step size, dt [aut] (read num_simulations times along with b)
+! b: 1.d-1, 1.d-2 (the desired values written here as a guide)
+! dt: 1.d-4, 1.d-5 (the desired values written here as a guide)
 1.d0
 1.d-4
 1.d-1
