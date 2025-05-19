@@ -64,7 +64,7 @@ program rutherford_scattering_test_simulations
 	real(dp) :: b, dt							! Impact parameter and time step size
 	
 	! Theoretical trajectory computation
-	real(dp) :: a, c, e, xf, yf
+	real(dp) :: xf, yf
 	
 	! Simulated trajectory computation variables
 	integer(i8) :: max_iterations
@@ -140,8 +140,8 @@ program rutherford_scattering_test_simulations
 		dt_char_trim = trim(dt_char)
 
 		! Generate output file names
-		output_file = 'K0_'//K0_char_trim//'_x0_'//x0_char_trim// &
-			'_b_'//b_char_trim//'_dt_'//dt_char_trim
+		output_file = 'K0_'//K0_char_trim//'keV_x0_'//x0_char_trim// &
+			'Å_b_'//b_char_trim//'Å_dt_'//dt_char_trim//'aut'
 		info_output_file = output_file//'_info.dat'
 		output_file = output_file//'.dat'
 
@@ -152,8 +152,9 @@ program rutherford_scattering_test_simulations
 		! Simulation info to console and file
 		write(info_output_unit, "('*** ELECTRON-ELECTRON &
 			&RUTHERFORD SCATTERING ***')")
+		write(info_output_unit, *)		! Blank line on Output Info File
 		print "('SIMULATION ', i3, ' OUT OF ', i3)", k, num_simulations
-		print*, 'K0: '//K0_char_trim//'[keV], hd: '//x0_char_trim// &
+		print*, 'K0: '//K0_char_trim//'[keV], x0: '//x0_char_trim// &
 			'[Å], b: '//b_char_trim//'[Å], dt: '//dt_char_trim//'[aut]'
 
 		! Initialize parameters and estimate number of time steps
@@ -165,8 +166,7 @@ program rutherford_scattering_test_simulations
 		
 		! Theoretical trajectory
 		call compute_theoretical_trajectory &
-			(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
-			xf, yf)
+			(num_plot_ploints, output_unit, info_output_unit, r0, K0, xf, yf)
 		
 		write(info_output_unit, *)		! Blank line on Output Info File
 
@@ -268,7 +268,6 @@ program rutherford_scattering_test_simulations
 		write(info_output_unit, format_string) total_time, total_time/60
 
 		write(info_output_unit, *)   ! Blank line on Output Info File
-		
 		write(info_output_unit, "('*** SCATTERING ANGLES COMPUTATION ***')")
 
 		! Theoretical Scattering Angle
@@ -278,16 +277,17 @@ program rutherford_scattering_test_simulations
 		
 		! Plot Scattering Angle
 		scat_angle_plot = datan2(yf,xf)
-		if (yf .lt. 0._dp)scat_angle_plot = 2*PI + scat_angle_plot
+!		if (yf .lt. 0._dp) scat_angle_plot = 2*PI + scat_angle_plot
 		format_string = "('Plot Scattering Angle:        ', f20.16, 'º')"
 		write(info_output_unit, format_string) scat_angle_plot*180/PI
 		
 		! Simulation Scattering Angle
 		scat_angle_sim = datan2(ri(2),ri(1))
-		if (ri(2) .lt. 0._dp) scat_angle_sim = 2*PI + scat_angle_sim
+!		if (ri(2) .lt. 0._dp) scat_angle_sim = 2*PI + scat_angle_sim
 		format_string = "('Simulation Scattering Angle:  ', f20.16, 'º')"
 		write(info_output_unit, format_string) scat_angle_sim*180/PI
 		
+		write(info_output_unit, *)   ! Blank line on Output Info File
 		write(info_output_unit, "('*** SCATTERING ANGLES COMPARISON ***')")
 		write(info_output_unit, "('Percent error between...')")
 
@@ -310,14 +310,12 @@ program rutherford_scattering_test_simulations
 
 		write(info_output_unit, "('*** CLOSEST DISTANCE AND POSITION &
 			&TO SCATTERING CENTER ***')")
-		format_string = "('Closest distance:   ', d12.4, '[au]')"
+		format_string = "('Closest distance:   ', d12.4, '[a0]')"
 		write(info_output_unit, format_string) closest_distance_scattering_center
-		format_string = "('Closest postion, x: ', d12.4, '[au]')"
+		format_string = "('Closest postion, x: ', d12.4, '[a0]')"
 		write(info_output_unit, format_string) closest_position_scattering_center(1)
-		format_string = "('Closest postion, y: ', d12.4, '[au]')"
+		format_string = "('Closest postion, y: ', d12.4, '[a0]')"
 		write(info_output_unit, format_string) closest_position_scattering_center(2)
-		format_string = "('Closest postion, z: ', d12.4, '[au]')"
-		write(info_output_unit, format_string) closest_position_scattering_center(3)
 
 		! Close output files
 		close(output_unit)
@@ -383,8 +381,9 @@ program rutherford_scattering_test_simulations
 		character(len=80) :: format_param_write_string
 
 		! Output basic simulation configuration
+		
 		write(info_output_unit, "('*** SIMULATION PARAMETERS ***')")
-		write(info_output_unit, "('Number of points to be plotted, N: ', i6)") &
+		write(info_output_unit, "('Number of points to be plotted: ', i6)") &
 			num_plot_ploints
 
 		! Convert and print initial kinetic energy, K0
@@ -398,7 +397,7 @@ program rutherford_scattering_test_simulations
 		conv_aux = x0
 		x0 = x0/0.5291772	! Conversion from Å to a0
 		format_param_write_string = &
-		"('Initial horizontal distance, hd:', d12.4, '[Å]   =', d12.4, '[a0]')"
+		"('Initial horizontal distance, x0:', d12.4, '[Å]   =', d12.4, '[a0]')"
 		write(info_output_unit, format_param_write_string) conv_aux, x0
 
 		! Convert and print impact parameter, b
@@ -453,38 +452,29 @@ program rutherford_scattering_test_simulations
 	!   - real(dp), intent(in) :: r0(3)
 	!       Initial position vector of the projectile electron (a0).
 	!   - real(dp), intent(in) :: K0
-	!       Initial kinetic energy of the projectile. On input, in kiloelectron
-	!   - real(dp), intent(out) :: a
-	!       Semi-major axis of the hyperbola, atomic units (a0).
-	!   - real(dp), intent(out) :: b
-	!       Semi-minor axis of the hyperbola, atomic units (a0).
-	!   - real(dp), intent(out) :: c
-	!       Distance to the center of the hyperbola, atomic units (a0).
-	!   - real(dp), intent(out) :: e
-	!       Eccentricity of the hyperbola, e > 1 dimensionless.
+	!       Initial kinetic energy of the projectile (Hartree, Eh).
 	!   - real(dp), intent(out) :: xf
-	!       Final x-coordinate of the trajectory
+	!       Final x-coordinate of the trajectory (a0).
 	!   - real(dp), intent(out) :: yf
-	!       Final y-coordinate of the trajectory
+	!       Final y-coordinate of the trajectory (a0).
 	!=============================================================================
 	subroutine compute_theoretical_trajectory &
-		(num_plot_ploints, output_unit, info_output_unit, r0, K0, a, b, c, e, &
-		xf, yf)
+		(num_plot_ploints, output_unit, info_output_unit, r0, K0, xf, yf)
 		implicit none
 
 		! Input/Output variables
 		integer(i8), intent(in) :: num_plot_ploints
 		integer(i8), intent(in) :: output_unit, info_output_unit
-		real(dp), intent(in) :: r0(3), K0			! Physical initial parameters
-		real(dp), intent(out) :: a, b, c, e		! Hyperbola geometric parameters
-		real(dp), intent(out) :: xf, yf				! Last point coordinates
+		real(dp), intent(in) :: r0(3), K0				! Physical parameters
+		real(dp), intent(out) :: xf, yf					! Last point coordinates
 
 		! Local variables
-		real(dp) :: x0, y0				! Initial horizontal and vertical positions
+		real(dp) :: l, e, a, b, c									! Hyperbola geometric parameters
+		real(dp) :: x0, y0												! Initial position coordinates
 		real(dp) :: phi0, phif, dphi, phii, ri		! Angular and radial coordinates
 		real(dp) :: xi, yi												! Cartesian coordinates
-		real(dp) :: alpha													! Asymptote/rotation angle
-		real(dp) :: den, num											! Auxiliary variables
+		real(dp) :: theta0												! Rotation angle
+		real(dp) :: delta, den, num								! Auxiliary variables
 		integer :: i
 
 		! Extract initial values
@@ -492,40 +482,41 @@ program rutherford_scattering_test_simulations
 		y0 = r0(2)	! Impact parameter
 
 		! Compute hyperbola geometric parameters
-		a = 1/(2*K0)					! Semi-major axis
-		b = y0								! Semi-minor axis
-		c = dsqrt(a*a + b*b)	! Distance to the center
-		e = c / a							! Eccentricity
+		l = 2*K0*(y0**2)									! Semi-latus rectum
+		e = dsqrt(1 + 4*(K0**2)*(y0**2))	! Eccentricity
+		a = 1/(2*K0)											! Semi-major axis
+		b = y0														! Semi-minor axis
+		c = dsqrt(a*a + b*b)							! Distance to the center
 
 		! Print hyperbola parameters
 		write(info_output_unit, "('*** THEORETICAL TRAJECTORY PARAMETERS ***')")
 		write(info_output_unit, "('Hyperbola geometric parameters')")
-		write(info_output_unit, "('a:', e12.4, '[au]')") a
-		write(info_output_unit, "('b:', e12.4, '[au]')") b
-		write(info_output_unit, "('c:', e12.4, '[au]')") c
+		write(info_output_unit, "('l:', e12.4, '[a0]')") l
 		write(info_output_unit, "('e:', e12.4, '[--]')") e
+		write(info_output_unit, "('a:', e12.4, '[a0]')") a
+		write(info_output_unit, "('b:', e12.4, '[a0]')") b
+		write(info_output_unit, "('c:', e12.4, '[a0]')") c
+		
 
 		! Compute trajectory using hyperbola's polar equation (left branch only)
-		alpha = dacos(1/e)										! Asymptote angle, (-) rotation angle
-
-		phif = datan2(y0, x0)									! Final plot angle
-		if (y0 < 0._dp) phif = phif + 2*PI		! Adjust angle to [0, 2π)
-
-		phif = phif - PI											! Reflect to hyperbola frame
-		phi0 = -phif - 2*alpha								! Initial angle to start plotting
+		delta = dabs(datan2(y0, x0) - PI)			! Small delta to avoid undefined ri
+		phi0 = PI - 2*dacos(1/e) + delta			! Initial angle to start plotting
+		phif = PI - delta											! Final angle
 		dphi = (phif - phi0)/num_plot_ploints	! Angular step between points
+		
+		theta0 = PI - dacos(1/e)							! Hyperbola rotation angle
 
 		do i = 0, num_plot_ploints
 			phii = phi0 + i*dphi
 			! Cartesian coordinates trajectory equation:
-			! ri = (b*b/a)/(1 - e*dcos(phii + alpha)) rewritten to avoid loss
-			! of significance for small b, using difference of squares trick
-			num = a**2 - (c*dcos(phii + alpha))**2
-			den = a + c*dcos(phii + alpha)
-			ri = (b**2 * den) / num
+			! ri = -l/(1 - e*dcos(phii - theta0)) rewritten below to avoid loss of
+			! significance for small values of b, using difference of squares trick
+			num = -l*(1 + e*dcos(phii - theta0))
+			den = 1 - (e*dcos(phii - theta0))**2
+			ri = num/den
 
-			xi = ri * dcos(phii)
-			yi = ri * dsin(phii)
+			xi = ri*dcos(phii)
+			yi = ri*dsin(phii)
 
 			write(output_unit, *) xi, yi
 

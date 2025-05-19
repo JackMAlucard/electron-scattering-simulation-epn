@@ -91,7 +91,7 @@ integer(i8), parameter :: ou_t = 13, ou_ee = 14, ou_le = 15!Output file, scripts
 		dtct = trim(dtc)
 
 		!Naming data file to be used
-		base_file_name = 'K0_'//K0ct//'_x0_'//hdct//'_b_'//bct//'_dt_'//dtct
+		base_file_name = 'K0_'//K0ct//'keV_x0_'//hdct//'Å_b_'//bct//'Å_dt_'//dtct//'aut'
 		data_file = base_file_name//'.dat'
 		!Naming and opening script files to be written
 		script_file_t = base_file_name//'_trajectories.gp'
