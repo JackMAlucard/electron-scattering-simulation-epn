@@ -1,6 +1,7 @@
 # Compiled source #
 ###################
 *.o
+*.out
 *.mod
 
 # Data files #
