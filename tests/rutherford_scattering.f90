@@ -613,7 +613,7 @@ program rutherford_scattering_test_simulations
 	!=============================================================================
 	! Subroutine: velocity_verlet_step
 	! Purpose   : Advance the position, velocity, and acceleration of the moving
-	!              particle by one Velocity-Verlet time step.
+	!             particle by one Velocity-Verlet time step.
 	! Arguments :
 	!   - integer(i8), intent(in) :: i
 	!       Current iteration index.
