@@ -60,6 +60,10 @@ program rutherford_scattering_theoretical_trajectory
 	
 	! Program structure variables
 	integer(i8) :: i, j, k
+	
+	! Dummy orphan variables from original program
+	integer(i8) :: max_iterations
+	real(dp) :: r0(3), v0(3)
 
 	! Copy input file and open for numeric and char input
 	call system ("cp "//input_file//" "//aux_file)
