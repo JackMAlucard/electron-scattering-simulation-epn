@@ -20,7 +20,8 @@
 !===============================================================================
 program rutherford_scattering_theoretical_trajectory
 	
-	use, intrinsic:: iso_fortran_env, only: stdin=>input_unit
+	use, intrinsic :: iso_fortran_env, only: stdin=>input_unit
+	use, intrinsic :: ieee_arithmetic
 	implicit none
 	! Kind type parameters for increased real precision and integer length
 	! Single precision reals, 6 digits, range 10**(-37) to 10**(37)-1; 32 bits
@@ -321,14 +322,17 @@ program rutherford_scattering_theoretical_trajectory
 		real(dp) :: l, e, a, b, c									! Hyperbola geometric parameters
 		real(dp) :: x0, y0												! Initial position coordinates
 		real(dp) :: phi0, phif, dphi, phii, ri		! Angular and radial coordinates
-		real(dp) :: xi, yi												! Cartesian coordinates
+		real(dp) :: xi, yi, ri_max								! Cartesian coordinates
 		real(dp) :: theta0												! Rotation angle
 		real(dp) :: delta, den, num								! Auxiliary variables
+		logical :: is_ri_inf
 		integer :: i
 
 		! Extract initial values
 		x0 = r0(1)	! Initial horizontal distance
 		y0 = r0(2)	! Impact parameter
+		! Physical upper boundary on r
+		ri_max = dsqrt(x0**2 + y0**2)
 
 		! Compute hyperbola geometric parameters
 		l = 2*K0*(y0**2)									! Semi-latus rectum
@@ -363,6 +367,14 @@ program rutherford_scattering_theoretical_trajectory
 			num = -l*(1 + e*dcos(phii - theta0))
 			den = 1 - (e*dcos(phii - theta0))**2
 			ri = num/den
+			
+			! Trim ri using physical boundary if it exceeds ri_max
+			is_ri_inf = .not. ieee_is_finite(ri)
+			if (is_ri_inf .or. abs(ri) > ri_max) then
+				print*, 'TRIMMING! ri initial:', ri
+				ri = ri_max
+				print*, 'TRIMMING! ri final:', ri
+			end if
 
 			xi = ri*dcos(phii)
 			yi = ri*dsin(phii)
