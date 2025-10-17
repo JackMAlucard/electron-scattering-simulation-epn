@@ -49,8 +49,8 @@ module m1_electron_beam_model
 	!               drawn from a normal distribution with the same mean (mu = 0)
 	!               and standard deviation (sigma), with the latter set in
 	!               relation to the beam's spot size. In the model, the spot
-	!               size is defined as the Full Width at Tenth Maximum (FWTM)
-	!               of the distribution, spot size = 2*sqrt(2*ln(10))*sigma.
+	!               size is defined as the Full Width at 5% Maximum (FW5M)
+	!               of the distribution, spot size = 2*sqrt(2*ln(20))*sigma.
 	!             - Velocities are initially directed along the +z axis, with
 	!               their magnitudes determined by the kinetic energy
 	!               distribution. The energy values follow a normal distribution
@@ -126,7 +126,7 @@ module m1_electron_beam_model
 		! Set the mean and standard deviation for the normal distribution of
 		! the initial positions
 		positions_mu = 0
-		positions_sigma = spot_size/(2*dsqrt(2*dlog(10._dp)))
+		positions_sigma = spot_size/(2*dsqrt(2*dlog(20._dp)))
 
 		! Set the mean and standard deviation for the normal distribution of
 		! kinetic energies
